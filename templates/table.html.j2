@@ -1,0 +1,23 @@
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Link</th>
+            <th>Coordinates</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody hx-target="closest tr" hx-swap="outerHTML">
+        {% for waypoint in waypoints %}
+            {% set id = loop.index0 %}
+            {% include 'row.html.j2' %}
+        {% endfor %}
+    </tbody>
+</table>
+
+<button class="btn btn-primary" hx-get="new_waypoint" hx-target="previous tbody" hx-swap="beforeend">
+  Add row
+</button>
+
