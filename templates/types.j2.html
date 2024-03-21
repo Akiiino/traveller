@@ -1,0 +1,14 @@
+<table class="table">
+  <thead>
+    <tr>
+      <th>Type</th>
+    </tr>
+  </thead>
+  <tbody hx-target="closest tr" hx-swap="outerHTML">
+    {% for type in types %}
+    <tr>
+      <td>{{ type }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

@@ -14,7 +14,7 @@ with open("base.gpx", "r") as gpx_file:
     BASE_WAYPOINT = BASE_GPX.waypoints[0]
     BASE_WAYPOINT.name = ""
     BASE_WAYPOINT.description = ""
-    BASE_WAYPOINT.type = ""
+    BASE_WAYPOINT.type = "See"
     BASE_WAYPOINT.link = ""
     BASE_WAYPOINT.latitude = 0.0
     BASE_WAYPOINT.longitude = 0.0
@@ -30,9 +30,14 @@ with open("res.gpx", "r") as gpx_file:
 app = Flask(__name__)
 app.jinja_env.undefined = StrictUndefined
 
+
 @app.route("/")
 def index():
-    return render_template("base.html.j2", waypoints=guide_gpx.waypoints)
+    return render_template(
+        "base.j2.html",
+        waypoints=guide_gpx.waypoints,
+        types=[x.get("name") for x in guide_gpx.extensions[4]],
+    )
 
 
 @app.route("/waypoint/<int:id>", methods=["DELETE", "PUT", "GET"])
@@ -46,18 +51,23 @@ def waypoint(id):
         guide_gpx.waypoints[id].name = request.form["name"]
         guide_gpx.waypoints[id].description = request.form["description"]
         guide_gpx.waypoints[id].type = request.form["type"]
-        guide_gpx.waypoints[id].link = request.form["link"]
+        guide_gpx.waypoints[id].link = request.form["link"].replace("&", "&amp;")
         guide_gpx.waypoints[id].latitude, guide_gpx.waypoints[id].longitude = map(
             float, request.form["coordinates"].replace(",", "").split()
         )
         save_gpx()
 
-    return render_template("row.html.j2", waypoint=guide_gpx.waypoints[id], id=id)
+    return render_template("row.j2.html", waypoint=guide_gpx.waypoints[id], id=id)
 
 
 @app.route("/waypoint/<int:id>/edit", methods=["GET"])
 def waypoint_edit(id):
-    return render_template("edit_row.html.j2", waypoint=guide_gpx.waypoints[id], id=id)
+    return render_template(
+        "edit_row.j2.html",
+        waypoint=guide_gpx.waypoints[id],
+        id=id,
+        types=[x.get("name") for x in guide_gpx.extensions[4]],
+    )
 
 
 @app.route("/new_waypoint", methods=["GET"])
@@ -65,9 +75,10 @@ def new_waypoint():
     guide_gpx.waypoints.append(deepcopy(BASE_WAYPOINT))
     save_gpx()
     return render_template(
-        "edit_row.html.j2",
+        "edit_row.j2.html",
         waypoint=guide_gpx.waypoints[-1],
         id=len(guide_gpx.waypoints) - 1,
+        types=[x.get("name") for x in guide_gpx.extensions[4]],
     )
 
 
