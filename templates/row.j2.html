@@ -1,17 +1,20 @@
 <tr>
-    <td>{{ waypoint.name }}</td>
-    <td style="white-space:pre-wrap; word-wrap:break-word">{{ waypoint.description }}</td>
-    <td>{{ waypoint.type }}</td>
+    <td><input type="checkbox" name="visited" hx-put="point/{{id}}/visited" hx-swap="none" {{ 'checked' if point.visited == True else '' }}></td>
+    <td>{{ point.name or '' }}</td>
+    <td style="white-space:pre-wrap; word-wrap:break-word">{{ (point.description or '') | urlize }}</td>
+    <td>{{ point.category or '' }}</td>
     <td>
-        <a href={{ waypoint.link }}>{{ waypoint.link | string | replace("&amp;", "&") }}</a>
+        {% if point.link %}
+        <a href={{ (point.link or '') }}>URL</a>
+        {% endif %}
     </td>
     <td>
-        <a href=https://www.openstreetmap.org/?mlat={{ waypoint.latitude }}&mlon={{ waypoint.longitude }}&zoom=15>{{ '%0.4f' % waypoint.latitude }}, {{ '%0.4f' % waypoint.longitude }}</a>
+        <a href=https://www.openstreetmap.org/?mlat={{ point.latitude }}&mlon={{ point.longitude }}&zoom=15>{{ '%0.4f' % point.latitude }}, {{ '%0.4f' % point.longitude }}</a>
     </td>
     <td>
-        <button class="btn btn-primary" hx-get="waypoint/{{ id }}/edit">Edit</button>
+        <button class="btn btn-primary" hx-get="point/{{ id }}/edit">Edit</button>
         <button class="btn btn-danger"
                 hx-confirm="Are you sure?"
-                hx-delete="waypoint/{{ id }}">Delete</button>
+                hx-delete="point/{{ id }}">Delete</button>
     </td>
 </tr>

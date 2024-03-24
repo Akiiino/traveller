@@ -49,14 +49,17 @@
             pkgs.djlint
             pkgs.csslint
 
-            (addFlags pkgs.ruff ["--config=${ruffTOML}"])
+			pkgs.ruff
+			pkgs.black
+            # (addFlags pkgs.ruff ["--config=${ruffTOML}"])
             (addFlags pkgs.mypy ["--ignore-missing-imports"])
             # (addFlags pkgs.black ["--target-version=py310"])
             (addFlags pkgs.isort ["--profile=black"])
 
             (pkgs.writeShellScriptBin "run_server" ''
               gunicorn -b 0.0.0.0:8000 --reload \
-              $(find templates -type f -name '*.html.j2' -exec echo --reload-extra-file {} \;)                serve:app
+              $(find templates -type f -name '*.j2.html' -exec echo --reload-extra-file {} \;) \
+              serve:app
               sleep 1
             '')
           ];

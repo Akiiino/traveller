@@ -3,27 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <title>Travel Guide</title>
-    <!-- UIkit CSS -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/uikit@3.16.26/dist/css/uikit.min.css"
     />
-    <!-- Bootstrap CSS -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css"
       rel="stylesheet"
       integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9"
       crossorigin="anonymous"
     />
-    <style>
-      tr.htmx-swapping td {
-        opacity: 0;
-        transition: opacity 1s ease-out;
-      }
-    </style>
   </head>
-  <body hx-boost="true">
+  <body>
     {% include 'table.j2.html' %}
+	<br>
+    <a href=export_gpx download="guide.gpx">Export GPX file</a>
     <script
       src="https://unpkg.com/htmx.org@1.9.5"
       integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO"
