@@ -1,29 +1,30 @@
-<tr hx-trigger="cancel" class="editing" hx-get="/waypoint/{{ id }}">
+<tr hx-trigger="cancel" class="editing" hx-get="/point/{{ id }}">
+    <td></td>
     <td>
-        <input name="name" style="width:100%" value="{{ waypoint.name }}">
+        <input name="name" style="width:100%" value="{{ point.name or '' }}">
     </td>
     <td>
         <textarea name="description"
                   style="width:100%"
-                  oninput="this.style.height = "";this.style.height = this.scrollHeight + "px"">{{ waypoint.description }}</textarea>
+                  oninput='this.style.height = "";this.style.height = this.scrollHeight + "px"'>{{ point.description or '' }}</textarea>
     </td>
     <td>
-        <select name="type">
-            {% for type in types %}<option value="{{ type }}">{{ type }}</option>{% endfor %}
+        <select name="category">
+            {% for category in categories %}<option value="{{ category }}" {{ 'selected' if point.category == category else '' }}>{{ category }}</option>{% endfor %}
         </select>
     </td>
     <td>
-        <input name="link" style="width:100%" value="{{ waypoint.link | string | replace("&amp;", "&") }}">
+        <input name="link" style="width:100%" value="{{ (point.link or '') | string | replace("&amp;", "&") }}">
     </td>
     <td>
         <input name="coordinates"
                style="width:100%"
-               value="{{ waypoint.latitude }}, {{ waypoint.longitude }}">
+               value="{{ point.latitude }}, {{ point.longitude }}">
     </td>
     <td>
-        <button class="btn btn-danger" hx-get="/waypoint/{{ id }}">Cancel</button>
+        <button class="btn btn-danger" hx-get="/point/{{ id }}">Cancel</button>
         <button class="btn btn-primary"
-                hx-put="/waypoint/{{ id }}"
+                hx-put="/point/{{ id }}"
                 hx-include="closest tr">Save</button>
     </td>
 </tr>
