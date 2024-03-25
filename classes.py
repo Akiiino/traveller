@@ -24,6 +24,7 @@ class POI:
     link: str = ""
     category: str = ""
     uuid: str = field(default_factory=lambda: str(uuid4()))
+    timestamp: datetime | None = field(default_factory=datetime.now)
 
 
     def __post_init__(self):
