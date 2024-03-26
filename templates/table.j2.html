@@ -12,7 +12,7 @@
     </tr>
   </thead>
   <tbody hx-target="closest tr" hx-swap="outerHTML">
-    {% for id, point in points.items() %}
+    {% for id, point in points %}
     	{% include 'row.j2.html' %}
 	{% endfor %}
   </tbody>

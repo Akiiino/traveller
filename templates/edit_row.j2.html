@@ -13,6 +13,7 @@
             {% for category in categories %}<option value="{{ category }}" {{ 'selected' if point.category == category else '' }}>{{ category }}</option>{% endfor %}
         </select>
     </td>
+    <td><input id="party" type="datetime-local" name="timestamp" value="{{ "" if point.timestamp is none else point.timestamp.strftime('%Y-%m-%dT%H:%M') }}"/></td>
     <td>
         <input name="link" style="width:100%" value="{{ (point.link or '') | string | replace("&amp;", "&") }}">
     </td>

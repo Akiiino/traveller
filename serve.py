@@ -2,6 +2,7 @@ from flask import Flask, Response, render_template, request
 from jinja2 import StrictUndefined
 from classes import POI, Guide
 from io import StringIO
+from datetime import datetime
 
 GUIDE_PATH = "guide.zip"
 guide = Guide.from_zip(GUIDE_PATH)
@@ -15,7 +16,7 @@ app.jinja_env.undefined = StrictUndefined
 def index():
     return render_template(
         "base.j2.html",
-        points=guide.points,
+        points=sorted(guide.points.items(), key=lambda x: (x[1].timestamp is not None, x[1].timestamp)),
     )
 
 
@@ -36,9 +37,11 @@ def point(id):
         guide.points[id].description = request.form["description"].strip()
         guide.points[id].category = request.form["category"].strip()
 
-        guide.points[id].link = (
-            request.form["link"].strip() or None
-        )
+        guide.points[id].link = request.form["link"].strip() or None
+        try:
+            guide.points[id].timestamp = datetime.strptime(request.form["timestamp"], "%Y-%m-%dT%H:%M")
+        except Exception:
+            guide.points[id].timestamp = None
 
     guide.to_zip(GUIDE_PATH)
 
