@@ -24,7 +24,7 @@ class POI:
     link: str = ""
     category: str = ""
     uuid: str = field(default_factory=lambda: str(uuid4()))
-    timestamp: datetime | None = field(default_factory=datetime.now)
+    timestamp: datetime | None = None
 
 
     def __post_init__(self):
@@ -32,6 +32,10 @@ class POI:
         self.longitude = float(self.longitude)
 
         self.visited = self.visited == "True"
+        if not self.timestamp:
+            self.timestamp = None
+        if isinstance(self.timestamp, str):
+            self.timestamp = datetime.fromisoformat(self.timestamp)
 
 
     def to_gpx(

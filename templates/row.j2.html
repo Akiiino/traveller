@@ -8,7 +8,7 @@
         <a href={{ (point.link or '') }}>URL</a>
         {% endif %}
     </td>
-    <td> {{ point.timestamp.strftime('%b %d, %H:%M').replace(" ", "&nbsp;") | safe }} </td>
+    <td> {{ "" if point.timestamp is none else point.timestamp.strftime('%b %d, %H:%M').replace(" ", "&nbsp;") | safe }} </td>
     <td>
         <a href=https://www.openstreetmap.org/?mlat={{ point.latitude }}&mlon={{ point.longitude }}&zoom=15>{{ '%0.4f' % point.latitude }}, {{ '%0.4f' % point.longitude }}</a>
     </td>
