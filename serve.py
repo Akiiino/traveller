@@ -16,7 +16,7 @@ app.jinja_env.undefined = StrictUndefined
 def index():
     return render_template(
         "base.j2.html",
-        points=sorted(guide.points.items(), key=lambda x: (x[1].timestamp is not None, x[1].timestamp)),
+        points=sorted(guide.points.items(), key=lambda x: (x[1].visited, x[1].timestamp is not None, x[1].timestamp)),
     )
 
 
