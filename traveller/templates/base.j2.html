@@ -2,12 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Added viewport meta tag for proper mobile scaling -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Travel Guide</title>
     <link
-      rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/uikit@3.16.26/dist/css/uikit.min.css"
+      rel="stylesheet"
     />
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css"
@@ -15,316 +14,19 @@
       integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9"
       crossorigin="anonymous"
     />
-    <!-- Leaflet CSS -->
     <link 
       rel="stylesheet" 
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <!-- Custom styles -->
-    <style>
-      /* Base styles */
-      body {
-        font-size: 16px; /* Base font size for better readability on mobile */
-      }
-      
-      /* Map styles */
-      #map {
-        height: 500px;
-        width: 100%;
-        margin-bottom: 20px;
-      }
-      
-      .visited-marker {
-        opacity: 0.6;
-      }
-      
-      .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-      }
-      
-      /* Touch-friendly spacing for buttons and controls */
-      .btn {
-        padding: 8px 16px;
-        margin: 4px;
-      }
-      
-      /* Tab navigation for mobile view */
-      .view-tabs {
-        display: flex;
-        margin-bottom: 15px;
-        border-bottom: 1px solid #dee2e6;
-      }
-      
-      .view-tab {
-        flex: 1;
-        text-align: center;
-        padding: 10px;
-        cursor: pointer;
-        border-bottom: 3px solid transparent;
-      }
-      
-      .view-tab.active {
-        border-bottom: 3px solid #0d6efd;
-        font-weight: bold;
-      }
-      
-      /* Controls for map full-screen toggle */
-      .map-controls {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        z-index: 1000;
-      }
-      
-      .fullscreen-btn {
-        background: white;
-        border: 2px solid rgba(0,0,0,0.2);
-        border-radius: 4px;
-        padding: 5px 10px;
-        font-size: 16px;
-        cursor: pointer;
-        box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-      }
-      
-      /* POI Cards for Mobile View */
-      .poi-card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        margin-bottom: 15px;
-        padding: 15px;
-        position: relative;
-      }
-      
-      .poi-card.editing {
-        padding: 15px;
-      }
-      
-      .poi-header {
-        display: flex;
-        align-items: flex-start;
-        margin-bottom: 10px;
-      }
-      
-      .poi-status {
-        margin-right: 15px;
-        padding-top: 3px;
-      }
-      
-      .poi-status input[type="checkbox"] {
-        width: 20px;
-        height: 20px;
-      }
-      
-      .poi-title {
-        flex-grow: 1;
-      }
-      
-      .poi-title h3 {
-        margin: 0;
-        font-size: 18px;
-        line-height: 1.2;
-      }
-      
-      .poi-actions-compact {
-        display: flex;
-        gap: 10px;
-        margin-left: 10px;
-      }
-      
-      .btn-icon {
-        background: none;
-        border: none;
-        font-size: 16px;
-        cursor: pointer;
-        padding: 5px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0.7;
-      }
-      
-      .btn-icon:hover {
-        opacity: 1;
-      }
-      
-      .category-badge {
-        display: inline-block;
-        background: #e9ecef;
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-        color: #495057;
-        margin-top: 5px;
-      }
-      
-      .poi-preview {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 10px;
-      }
-      
-      .coordinates-badge, .date-badge {
-        font-size: 12px;
-        background: #f8f9fa;
-        padding: 3px 8px;
-        border-radius: 12px;
-        color: #6c757d;
-      }
-      
-      .poi-details {
-        padding-top: 10px;
-      }
-      
-      .description {
-        margin-bottom: 10px;
-      }
-      
-      .poi-actions {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 10px;
-      }
-      
-      .link-btn {
-        display: inline-block;
-        padding: 4px 8px;
-        background-color: #f8f9fa;
-        border-radius: 4px;
-        color: #0d6efd;
-        text-decoration: none;
-        font-size: 14px;
-      }
-      
-      /* Hide and show elements based on details state */
-      .btn-toggle-details .hide-details-text {
-        display: none;
-      }
-      
-      .poi-details:not(.collapsed) + .poi-actions .btn-toggle-details .show-details-text {
-        display: none;
-      }
-      
-      .poi-details:not(.collapsed) + .poi-actions .btn-toggle-details .hide-details-text {
-        display: inline;
-      }
-      
-      /* Edit form styles */
-      .edit-form {
-        width: 100%;
-      }
-      
-      .form-group label {
-        font-weight: 500;
-        margin-bottom: 5px;
-        display: block;
-      }
-      
-      .form-actions {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 15px;
-      }
-      
-      .add-poi-btn {
-        margin-top: 10px;
-        width: 100%;
-        padding: 12px;
-      }
-      
-      /* Default desktop layout */
-      .map-table-container {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-      }
-      
-      /* For mobile: Initially hide the list view and show tabs */
-      @media (max-width: 991px) {
-        .view-tabs {
-          display: flex;
-        }
-        
-        #map-container, #table-container {
-          width: 100%;
-        }
-        
-        /* Initially show map, hide table on mobile */
-        #table-container {
-          display: none;
-        }
-        
-        /* Full screen map styles */
-        .map-fullscreen {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          z-index: 1050;
-          margin: 0;
-          padding: 0;
-        }
-        
-        .map-fullscreen #map {
-          height: 100%;
-        }
-        
-        /* Show mobile card view, hide desktop table view */
-        .mobile-view {
-          display: block;
-        }
-        .desktop-view {
-          display: none;
-        }
-      }
-      
-      /* For desktop: Always show both views, hide tabs and fullscreen button */
-      @media (min-width: 992px) {
-        .view-tabs {
-          display: none;
-        }
-        
-        .map-controls {
-          display: none; /* Hide fullscreen button on desktop */
-        }
-        
-        .map-table-container {
-          flex-direction: row;
-        }
-        
-        #map-container {
-          flex: 1;
-          position: sticky;
-          top: 20px;
-          align-self: flex-start;
-        }
-        
-        #table-container {
-          flex: 1;
-          display: block !important; /* Always show on desktop */
-        }
-        
-        /* Show desktop table view, hide mobile card view */
-        .desktop-view {
-          display: block;
-        }
-        .mobile-view {
-          display: none;
-        }
-      }
-    </style>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
   </head>
   <body>
     <div class="container">
       <h1 class="mb-4">Travel Guide</h1>
       
-      <!-- Add tab navigation for mobile -->
       <div class="view-tabs">
         <div class="view-tab active" data-target="map-container">Map View</div>
         <div class="view-tab" data-target="table-container">List View</div>
@@ -332,7 +34,6 @@
       
       <div class="map-table-container">
         <div id="map-container">
-          <!-- Add fullscreen toggle button -->
           <div class="map-controls">
             <button class="fullscreen-btn" id="fullscreen-toggle">⛶</button>
           </div>
@@ -363,230 +64,18 @@
       </div>
     </div>
 
-    <!-- Leaflet JS -->
     <script 
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
     
-    <!-- HTMX -->
     <script
       src="https://unpkg.com/htmx.org@1.9.5"
       integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO"
       crossorigin=""
     ></script>
     
-    <!-- Map initialization script -->
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Restore selected tab from localStorage
-      const savedTab = localStorage.getItem('selectedTab');
-      
-      // Card detail toggle functionality
-      document.addEventListener('click', function(e) {
-        // Show on map button functionality
-        if (e.target.closest('.btn-show-on-map')) {
-          const id = e.target.closest('.btn-show-on-map').dataset.id;
-          // Switch to map view
-          const mapTab = document.querySelector('.view-tab[data-target="map-container"]');
-          mapTab.click();
-          
-          // Find and open the marker popup
-          if (markers[id]) {
-            markers[id].openPopup();
-            map.setView(markers[id].getLatLng(), 15);
-          }
-        }
-      });
-      // Initialize map
-      const map = L.map('map').setView([37.5665, 126.9780], 10); // Default to Seoul
-      
-      // Add tile layer
-      L.tileLayer('https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        language: 'en'
-      }).addTo(map);
-      
-      // Store markers by ID for easy reference - make these globally available
-      const markers = {};
-      const markerGroup = L.featureGroup().addTo(map); // Using featureGroup instead of layerGroup
-      
-      // Function to attach hover events to table rows
-      function attachRowHoverEvents(rowElement, markerId) {
-        if (!rowElement || !markers[markerId]) return;
-        
-        rowElement.addEventListener('mouseenter', () => {
-          markers[markerId].setZIndexOffset(1000);
-          markers[markerId].openPopup();
-        });
-        
-        rowElement.addEventListener('mouseleave', () => {
-          markers[markerId].setZIndexOffset(0);
-          markers[markerId].closePopup();
-        });
-      }
-      
-      // Function to load and refresh all POIs
-      function loadPOIs() {
-        fetch('/api/points_geojson')
-          .then(response => response.json())
-          .then(data => {
-            // Clear existing markers
-            markerGroup.clearLayers();
-            
-            data.features.forEach(feature => {
-              const props = feature.properties;
-              const coords = feature.geometry.coordinates;
-              
-              // Skip points with coordinates (0, 0)
-              if (coords[0] === 0 && coords[1] === 0) {
-                console.log(`Skipping point "${props.name}" with coordinates (0, 0)`);
-                return;  // Skip this point
-              }
-              
-              const latlng = L.latLng(coords[1], coords[0]);
-              
-              // Create marker
-              const marker = L.marker(latlng, {
-                title: props.name,
-                opacity: props.visited ? 0.6 : 1.0
-              });
-              
-              // Create popup content
-              const popupContent = document.createElement('div');
-              popupContent.innerHTML = `
-                <h5>${props.name || 'Unnamed Point'}</h5>
-                <p>${props.description || ''}</p>
-                <p>Category: ${props.category || 'None'}</p>
-                ${props.link ? `<p><a href="${props.link}" target="_blank">Link</a></p>` : ''}
-              `;
-              
-              // Add event listener to edit button
-              popupContent.querySelector('.edit-poi')?.addEventListener('click', function() {
-                window.location.href = `#poi-${props.id}`;
-                document.querySelector(`#poi-${props.id} .btn-primary`).click();
-              });
-              
-              marker.bindPopup(popupContent);
-              markers[props.id] = marker;
-              markerGroup.addLayer(marker);
-              
-              // Add ID to corresponding table row for linking
-              const row = document.querySelector(`tr[data-id="${props.id}"]`);
-              if (row) {
-                row.id = `poi-${props.id}`;
-                attachRowHoverEvents(row, props.id);
-              }
-            });
-            
-            // Fit bounds to show all markers - now using featureGroup which always has getBounds
-            if (markerGroup.getLayers().length > 0) {
-              map.fitBounds(markerGroup.getBounds(), { padding: [50, 50] });
-            }
-          })
-          .catch(error => console.error('Error loading POIs:', error));
-      }
-      
-      // Initial load
-      loadPOIs();
-      
-      // Add event listener for "Show All Markers" button
-      document.getElementById('fit-bounds').addEventListener('click', function() {
-        if (markerGroup.getLayers().length > 0) {
-          map.fitBounds(markerGroup.getBounds(), { padding: [50, 50] });
-        }
-      });
-      
-      // Toggle visited points visibility
-      document.getElementById('show-visited').addEventListener('change', function() {
-        const showVisited = this.checked;
-        
-        Object.entries(markers).forEach(([id, marker]) => {
-          const row = document.querySelector(`tr[data-id="${id}"]`);
-          if (row) {
-            const isVisited = row.querySelector('input[name="visited"]')?.checked;
-            
-            if (isVisited) {
-              if (showVisited) {
-                markerGroup.addLayer(marker);
-              } else {
-                markerGroup.removeLayer(marker);
-              }
-            }
-          }
-        });
-      });
-
-      // Handle updates from HTMX - fix for buttons not working after edits
-      document.body.addEventListener('htmx:afterSwap', function(event) {
-        // Refresh the map data
-        loadPOIs();
-        
-        // Force HTMX to process the new content
-        htmx.process(event.detail.target);
-      });
-      
-      // Also listen for general HTMX after-request events
-      document.body.addEventListener('htmx:afterOnLoad', function() {
-        loadPOIs();
-      });
-      
-      // Add tab navigation functionality
-      const viewTabs = document.querySelectorAll('.view-tab');
-      viewTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-          // Remove active class from all tabs
-          viewTabs.forEach(t => t.classList.remove('active'));
-          
-          // Add active class to clicked tab
-          this.classList.add('active');
-          
-          // Hide all views
-          document.getElementById('map-container').style.display = 'none';
-          document.getElementById('table-container').style.display = 'none';
-          
-          // Show the selected view
-          const targetId = this.getAttribute('data-target');
-          document.getElementById(targetId).style.display = 'block';
-          
-          // Save the selected tab to localStorage
-          localStorage.setItem('selectedTab', targetId);
-          
-          // If switching to map view, trigger a resize to fix map rendering
-          if (targetId === 'map-container') {
-            map.invalidateSize();
-          }
-        });
-      });
-      
-      // Set initial view based on localStorage (or default to map view)
-      if (savedTab && document.getElementById(savedTab)) {
-        document.querySelector(`.view-tab[data-target="${savedTab}"]`).click();
-      } else {
-        document.querySelector('.view-tab[data-target="map-container"]').click();
-      }
-      
-      // Fullscreen toggle functionality
-      const fullscreenToggle = document.getElementById('fullscreen-toggle');
-      const mapContainer = document.getElementById('map-container');
-      
-      fullscreenToggle.addEventListener('click', function() {
-        mapContainer.classList.toggle('map-fullscreen');
-        
-        // Update the button text
-        if (mapContainer.classList.contains('map-fullscreen')) {
-          fullscreenToggle.textContent = '×'; // Close icon
-        } else {
-          fullscreenToggle.textContent = '⛶'; // Expand icon
-        }
-        
-        // Trigger map resize after layout change
-        setTimeout(() => {
-          map.invalidateSize();
-        }, 100);
-      });
-    });
-    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   </body>
 </html>

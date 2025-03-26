@@ -26,9 +26,9 @@
                required>
     </td>
     <td>
-        <button class="btn btn-danger" hx-get="/point/{{ id }}">Cancel</button>
-        <button class="btn btn-primary"
-                hx-put="/point/{{ id }}"
-                hx-include="closest tr">Save</button>
+        <div class="poi-actions-compact">
+            <button class="btn-icon btn-danger" hx-get="/point/{{ id }}" title="Cancel">❌</button>
+            <button class="btn-icon btn-primary" hx-put="/point/{{ id }}" hx-include="closest tr" title="Save">✔️</button>
+        </div>
     </td>
 </tr>
