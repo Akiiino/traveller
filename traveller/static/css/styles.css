@@ -23,27 +23,6 @@ body {
   margin: 4px;
 }
 
-/* Button styling for popup */
-.btn-show-in-list {
-  margin-top: 10px;
-  width: 100%;
-}
-
-/* Highlight effect for POI elements */
-@keyframes highlight-animation {
-  0% { background-color: rgba(255, 251, 130, 0.8); }
-  100% { background-color: transparent; }
-}
-
-.highlight-poi {
-  animation: highlight-animation 2s ease-out;
-}
-
-tr.highlight-poi {
-  position: relative;
-  z-index: 10;
-}
-
 .view-tabs {
   display: flex;
   margin-bottom: 15px;
@@ -245,6 +224,36 @@ tr.highlight-poi {
 #date-filter {
   width: auto;
   display: inline-block;
+}
+
+/* Highlight effect for jump to details feature */
+@keyframes highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+  }
+}
+
+.highlight-element {
+  animation: highlight-pulse 2s 1;
+  background-color: rgba(13, 110, 253, 0.1) !important;
+  transition: background-color 2s;
+}
+
+/* Style for the View Details button in popups */
+.jump-to-details {
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+/* Make sure popup has enough width for the button */
+.leaflet-popup-content {
+  min-width: 150px;
 }
 
 @media (max-width: 991px) {

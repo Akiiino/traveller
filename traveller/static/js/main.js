@@ -64,30 +64,37 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Function to jump to row or card from map
-  function jumpToElement(id) {
-    // Check if we're on mobile and need to switch to list view
-    if (window.innerWidth <= 991) {
+  // Function to jump to card/table row from the map
+  function jumpToDetails(id) {
+    // Check if we're on mobile
+    const isMobile = window.innerWidth < 992;
+    
+    if (isMobile) {
+      // On mobile, switch to list view tab first
       const listTab = document.querySelector('.view-tab[data-target="table-container"]');
-      if (listTab) {
-        listTab.click();
-      }
+      listTab.click();
     }
     
-    // Find the element (row or card)
-    const element = document.getElementById(`poi-${id}`);
-    if (!element) return;
+    // Find the corresponding element based on the view
+    let targetElement;
+    if (document.querySelector('.desktop-view').style.display !== 'none') {
+      // Desktop view - find table row
+      targetElement = document.querySelector(`tr[data-id="${id}"]`);
+    } else {
+      // Mobile view - find card
+      targetElement = document.querySelector(`.poi-card[data-id="${id}"]`);
+    }
     
-    // Scroll element into view
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    
-    // Add highlight effect
-    element.classList.add('highlight-poi');
-    
-    // Remove highlight after a delay
-    setTimeout(() => {
-      element.classList.remove('highlight-poi');
-    }, 2000);
+    if (targetElement) {
+      // Scroll the element into view
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Add a highlight effect
+      targetElement.classList.add('highlight-element');
+      setTimeout(() => {
+        targetElement.classList.remove('highlight-element');
+      }, 2000);
+    }
   }
   
   function loadPOIs() {
@@ -121,13 +128,15 @@ document.addEventListener('DOMContentLoaded', function() {
             <p>Category: ${props.category || 'None'}</p>
             ${props.link ? `<p><a href="${props.link}" target="_blank">Link</a></p>` : ''}
             ${props.timestamp ? `<p>Date: ${new Date(props.timestamp).toLocaleDateString()}</p>` : ''}
-            <button class="btn btn-sm btn-primary btn-show-in-list" data-id="${props.id}">Show in List</button>
+            <div class="text-center mt-2">
+              <button class="btn btn-sm btn-primary jump-to-details" data-id="${props.id}">View Details</button>
+            </div>
           `;
           
-          // Add event listener for the Show in List button
-          popupContent.querySelector('.btn-show-in-list').addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            jumpToElement(id);
+          // Add event listener to the button
+          popupContent.querySelector('.jump-to-details').addEventListener('click', function() {
+            const pointId = this.getAttribute('data-id');
+            jumpToDetails(pointId);
           });
           
           marker.bindPopup(popupContent);
@@ -247,6 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
     applyFilters();
   });
 
+  // Reinitialize event listeners when DOM updates
   document.body.addEventListener('htmx:afterSwap', function(event) {
     loadPOIs();
     htmx.process(event.detail.target);
@@ -254,6 +264,14 @@ document.addEventListener('DOMContentLoaded', function() {
   
   document.body.addEventListener('htmx:afterOnLoad', function() {
     loadPOIs();
+  });
+  
+  // Handle marker popups that were created dynamically
+  document.body.addEventListener('click', function(e) {
+    if (e.target.classList.contains('jump-to-details')) {
+      const pointId = e.target.getAttribute('data-id');
+      jumpToDetails(pointId);
+    }
   });
   
   const viewTabs = document.querySelectorAll('.view-tab');
