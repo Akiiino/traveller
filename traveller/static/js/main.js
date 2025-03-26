@@ -1,19 +1,32 @@
 document.addEventListener('DOMContentLoaded', function() {
   const savedTab = localStorage.getItem('selectedTab');
   
+  // Update the map button click handler
   document.addEventListener('click', function(e) {
-    if (e.target.closest('.btn-show-on-map')) {
-      const id = e.target.closest('.btn-show-on-map').dataset.id;
+    const mapButton = e.target.closest('.btn-show-on-map');
+    if (mapButton) {
+      // Get the point ID from data attribute
+      const id = mapButton.dataset.id;
+      if (!id) {
+        console.error('Missing data-id on map button');
+        return;
+      }
+
+      // Switch to map tab
       const mapTab = document.querySelector('.view-tab[data-target="map-container"]');
       mapTab.click();
-      
-      if (markers[id]) {
-        markers[id].openPopup();
-        map.setView(markers[id].getLatLng(), 15);
-      }
+
+      // Give the map a moment to initialize properly after tab switch
+      setTimeout(() => {
+        if (markers[id]) {
+          markers[id].openPopup();
+          map.setView(markers[id].getLatLng(), 15);
+        } else {
+          console.warn(`No marker found for ID: ${id}`);
+        }
+      }, 300);
     }
-  });
-  
+  });  
   const map = L.map('map').setView([37.5665, 126.9780], 10);
   
   L.tileLayer('https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png', {
@@ -64,26 +77,37 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Function to jump to card/table row from the map
-  function jumpToDetails(id) {
-    // Check if we're on mobile
-    const isMobile = window.innerWidth < 992;
+function jumpToDetails(id) {
+  // Check if we're on mobile
+  const isMobile = window.innerWidth < 992;
+  
+  if (isMobile) {
+    // On mobile, switch to list view tab first
+    const listTab = document.querySelector('.view-tab[data-target="table-container"]');
     
-    if (isMobile) {
-      // On mobile, switch to list view tab first
-      const listTab = document.querySelector('.view-tab[data-target="table-container"]');
-      listTab.click();
-    }
-    
-    // Find the corresponding element based on the view
-    let targetElement;
-    if (document.querySelector('.desktop-view').style.display !== 'none') {
-      // Desktop view - find table row
-      targetElement = document.querySelector(`tr[data-id="${id}"]`);
-    } else {
+    // Store reference to the function we'll call after tab switch
+    const findAndHighlightElement = () => {
       // Mobile view - find card
-      targetElement = document.querySelector(`.poi-card[data-id="${id}"]`);
-    }
+      const targetElement = document.querySelector(`.poi-card[data-id="${id}"]`);
+      
+      if (targetElement) {
+        // Scroll the element into view
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Add a highlight effect
+        targetElement.classList.add('highlight-element');
+        setTimeout(() => {
+          targetElement.classList.remove('highlight-element');
+        }, 2000);
+      }
+    };
+    
+    // Handle tab switching with a delay to let the DOM update
+    listTab.click();
+    setTimeout(findAndHighlightElement, 300);
+  } else {
+    // Desktop view - find table row
+    const targetElement = document.querySelector(`tr[data-id="${id}"]`);
     
     if (targetElement) {
       // Scroll the element into view
@@ -96,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 2000);
     }
   }
-  
+}  
   function loadPOIs() {
     fetch('/api/points_geojson')
       .then(response => response.json())
