@@ -1,0 +1,306 @@
+body {
+  font-size: 16px;
+}
+
+#map {
+  height: 500px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.visited-marker {
+  opacity: 0.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.btn {
+  padding: 8px 16px;
+  margin: 4px;
+}
+
+.view-tabs {
+  display: flex;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.view-tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+}
+
+.view-tab.active {
+  border-bottom: 3px solid #0d6efd;
+  font-weight: bold;
+}
+
+.map-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+}
+
+.fullscreen-btn {
+  background: white;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+}
+
+.poi-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  margin-bottom: 15px;
+  padding: 15px;
+  position: relative;
+}
+
+.poi-card.editing {
+  padding: 15px;
+}
+
+.poi-header {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.poi-status {
+  margin-right: 15px;
+  padding-top: 3px;
+}
+
+.poi-status input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+
+.poi-title {
+  flex-grow: 1;
+}
+
+.poi-title h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.poi-actions-compact {
+  display: flex;
+  gap: 10px;
+  margin-left: 10px;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.btn-icon:hover {
+  opacity: 1;
+}
+
+.category-badge {
+  display: inline-block;
+  background: #e9ecef;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #495057;
+  margin-top: 5px;
+}
+
+.poi-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.coordinates-badge, .date-badge {
+  font-size: 12px;
+  background: #f8f9fa;
+  padding: 3px 8px;
+  border-radius: 12px;
+  color: #6c757d;
+}
+
+.poi-details {
+  padding-top: 10px;
+}
+
+.description {
+  margin-bottom: 10px;
+}
+
+.poi-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.link-btn {
+  display: inline-block;
+  padding: 4px 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  color: #0d6efd;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.btn-toggle-details .hide-details-text {
+  display: none;
+}
+
+.poi-details:not(.collapsed) + .poi-actions .btn-toggle-details .show-details-text {
+  display: none;
+}
+
+.poi-details:not(.collapsed) + .poi-actions .btn-toggle-details .hide-details-text {
+  display: inline;
+}
+
+.edit-form {
+  width: 100%;
+}
+
+.form-group label {
+  font-weight: 500;
+  margin-bottom: 5px;
+  display: block;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
+.add-poi-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 12px;
+}
+
+.map-table-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Date filter styles */
+.date-filter-container {
+  margin-top: 10px;
+  padding: 5px 0;
+}
+
+.date-filter-container label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+#date-filter {
+  width: auto;
+  display: inline-block;
+}
+
+@media (max-width: 991px) {
+  .view-tabs {
+    display: flex;
+  }
+  
+  #map-container, #table-container {
+    width: 100%;
+  }
+  
+  #table-container {
+    display: none;
+  }
+  
+  .map-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1050;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .map-fullscreen #map {
+    height: 100%;
+  }
+  
+  .mobile-view {
+    display: block;
+  }
+  .desktop-view {
+    display: none;
+  }
+  
+  /* Mobile date filter styles */
+  .date-filter-container {
+    flex-direction: column;
+  }
+  
+  #date-filter {
+    width: 100%;
+    margin-bottom: 5px;
+  }
+}
+
+@media (min-width: 992px) {
+  .view-tabs {
+    display: none;
+  }
+  
+  .map-controls {
+    display: none;
+  }
+  
+  .map-table-container {
+    flex-direction: row;
+  }
+  
+  #map-container {
+    flex: 1;
+    position: sticky;
+    top: 20px;
+    align-self: flex-start;
+  }
+  
+  #table-container {
+    flex: 1;
+    display: block !important;
+  }
+  
+  .desktop-view {
+    display: block;
+  }
+  .mobile-view {
+    display: none;
+  }
+}

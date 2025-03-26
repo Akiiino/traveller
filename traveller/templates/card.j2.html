@@ -17,9 +17,6 @@
     <div class="poi-preview">
         {% if point.latitude != 0 or point.longitude != 0 %}
             <span class="coordinates-badge">
-                <!--<a href="https://www.openstreetmap.org/?mlat={{ point.latitude }}&mlon={{ point.longitude }}&zoom=15">
-                    {{ '%0.4f' % point.latitude }}, {{ '%0.4f' % point.longitude }}
-                </a>-->
                 <a href="nmap://place?lat={{ point.latitude }}&lng={{ point.longitude }}&name={{ point.name | urlencode }}&appname=com.example.myapp">
                     {{ '%0.4f' % point.latitude }}, {{ '%0.4f' % point.longitude }}
                 </a>

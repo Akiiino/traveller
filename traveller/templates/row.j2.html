@@ -18,9 +18,9 @@
         {% endif %}
     </td>
     <td>
-        <button class="btn btn-primary" hx-get="/point/{{ id }}/edit">Edit</button>
-        <button class="btn btn-danger"
-                hx-confirm="Are you sure?"
-                hx-delete="/point/{{ id }}">Delete</button>
+        <div class="poi-actions-compact">
+            <button class="btn-icon btn-edit" hx-get="/point/{{ id }}/edit" title="Edit">✏️</button>
+            <button class="btn-icon btn-delete" hx-confirm="Are you sure?" hx-delete="/point/{{ id }}" title="Delete">🗑️</button>
+        </div>
     </td>
 </tr>
