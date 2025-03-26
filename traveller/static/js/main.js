@@ -1,18 +1,11 @@
 document.addEventListener('DOMContentLoaded', function() {
   const savedTab = localStorage.getItem('selectedTab');
-  let isMobileView = window.innerWidth < 992; // Check initial viewport width
-  
-  // Update the mobile view state when window is resized
-  window.addEventListener('resize', function() {
-    isMobileView = window.innerWidth < 992;
-  });
   
   document.addEventListener('click', function(e) {
     if (e.target.closest('.btn-show-on-map')) {
       const id = e.target.closest('.btn-show-on-map').dataset.id;
-      
-      // On mobile, we need to switch to map tab first
-      if (isMobileView) {
+      // For mobile, switch to map tab
+      if (window.innerWidth < 992) {
         const mapTab = document.querySelector('.view-tab[data-target="map-container"]');
         mapTab.click();
       }
@@ -27,35 +20,28 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.target.closest('.jump-to-details-btn')) {
       const id = e.target.closest('.jump-to-details-btn').dataset.id;
       
-      // On mobile, we need to switch to table tab first
-      if (isMobileView) {
+      // For mobile devices only, switch to table tab
+      if (window.innerWidth < 992) {
         const tableTab = document.querySelector('.view-tab[data-target="table-container"]');
         tableTab.click();
       }
       
-      // Small delay to allow any view changes to complete
+      // Allow time for the view to switch before scrolling
       setTimeout(() => {
-        // Try to find the element in both mobile and desktop views
-        const desktopElement = document.querySelector(`.desktop-view tr[data-id="${id}"]`);
-        const mobileElement = document.querySelector(`.mobile-view .poi-card[data-id="${id}"]`);
-        const element = isMobileView ? mobileElement : desktopElement;
+        // Look for the element in both desktop and mobile views
+        const element = document.getElementById(`poi-${id}`) || 
+                        document.querySelector(`.poi-card[data-id="${id}"]`);
         
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           
-          // Add highlight animation
-          element.style.backgroundColor = 'rgba(13, 110, 253, 0.2)';
+          // Apply visual highlight
+          element.classList.add('highlight-poi');
+          
+          // Remove the highlight class after animation completes
           setTimeout(() => {
-            // Fade out the highlight
-            element.style.transition = 'background-color 1.5s ease';
-            element.style.backgroundColor = 'transparent';
-            
-            // Remove the styles after the transition completes
-            setTimeout(() => {
-              element.style.transition = '';
-              element.style.backgroundColor = '';
-            }, 1500);
-          }, 500);
+            element.classList.remove('highlight-poi');
+          }, 2000);
         }
       }, 100);
     }
@@ -136,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
           });
           
           const popupContent = document.createElement('div');
-          popupContent.className = 'poi-popup';
+          popupContent.classList.add('marker-popup');
           popupContent.innerHTML = `
             <h5>${props.name || 'Unnamed Point'}</h5>
             <p>${props.description || ''}</p>
@@ -160,16 +146,10 @@ document.addEventListener('DOMContentLoaded', function() {
             markerGroup.addLayer(marker);
           }
           
-          // Handle desktop view rows
-          const row = document.querySelector(`.desktop-view tr[data-id="${props.id}"]`);
+          const row = document.querySelector(`tr[data-id="${props.id}"]`);
           if (row) {
+            row.id = `poi-${props.id}`;
             attachRowHoverEvents(row, props.id);
-          }
-          
-          // Handle mobile view cards
-          const card = document.querySelector(`.mobile-view .poi-card[data-id="${props.id}"]`);
-          if (card) {
-            attachRowHoverEvents(card, props.id);
           }
         });
         

@@ -226,20 +226,32 @@ body {
   display: inline-block;
 }
 
-/* Popup styling */
-.poi-popup {
-  min-width: 200px;
+/* Highlight effect for POIs */
+.highlight-poi {
+  animation: highlight-pulse 2s ease-out;
+  position: relative;
+  z-index: 1;
 }
 
-.poi-popup .btn {
-  margin-top: 10px;
+@keyframes highlight-pulse {
+  0%, 20% {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.5);
+    background-color: rgba(13, 110, 253, 0.15);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+/* Make the popup button more prominent */
+.marker-popup .jump-to-details-btn {
+  display: block;
   width: 100%;
-}
-
-/* Highlight effect for found items when jumping from map to details */
-tr[data-id].highlight-row td,
-.poi-card.highlight-card {
-  transition: background-color 1.5s ease;
+  margin-top: 8px;
+  text-align: center;
 }
 
 @media (max-width: 991px) {
