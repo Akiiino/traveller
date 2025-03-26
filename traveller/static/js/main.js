@@ -4,46 +4,13 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('click', function(e) {
     if (e.target.closest('.btn-show-on-map')) {
       const id = e.target.closest('.btn-show-on-map').dataset.id;
-      // For mobile, switch to map tab
-      if (window.innerWidth < 992) {
-        const mapTab = document.querySelector('.view-tab[data-target="map-container"]');
-        mapTab.click();
-      }
+      const mapTab = document.querySelector('.view-tab[data-target="map-container"]');
+      mapTab.click();
       
       if (markers[id]) {
         markers[id].openPopup();
         map.setView(markers[id].getLatLng(), 15);
       }
-    }
-    
-    // Handle click on the jump-to-details button in map popups
-    if (e.target.closest('.jump-to-details-btn')) {
-      const id = e.target.closest('.jump-to-details-btn').dataset.id;
-      
-      // For mobile devices only, switch to table tab
-      if (window.innerWidth < 992) {
-        const tableTab = document.querySelector('.view-tab[data-target="table-container"]');
-        tableTab.click();
-      }
-      
-      // Allow time for the view to switch before scrolling
-      setTimeout(() => {
-        // Look for the element in both desktop and mobile views
-        const element = document.getElementById(`poi-${id}`) || 
-                        document.querySelector(`.poi-card[data-id="${id}"]`);
-        
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          
-          // Apply visual highlight
-          element.classList.add('highlight-poi');
-          
-          // Remove the highlight class after animation completes
-          setTimeout(() => {
-            element.classList.remove('highlight-poi');
-          }, 2000);
-        }
-      }, 100);
     }
   });
   
@@ -97,6 +64,32 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
+  // Function to jump to row or card from map
+  function jumpToElement(id) {
+    // Check if we're on mobile and need to switch to list view
+    if (window.innerWidth <= 991) {
+      const listTab = document.querySelector('.view-tab[data-target="table-container"]');
+      if (listTab) {
+        listTab.click();
+      }
+    }
+    
+    // Find the element (row or card)
+    const element = document.getElementById(`poi-${id}`);
+    if (!element) return;
+    
+    // Scroll element into view
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // Add highlight effect
+    element.classList.add('highlight-poi');
+    
+    // Remove highlight after a delay
+    setTimeout(() => {
+      element.classList.remove('highlight-poi');
+    }, 2000);
+  }
+  
   function loadPOIs() {
     fetch('/api/points_geojson')
       .then(response => response.json())
@@ -122,15 +115,20 @@ document.addEventListener('DOMContentLoaded', function() {
           });
           
           const popupContent = document.createElement('div');
-          popupContent.classList.add('marker-popup');
           popupContent.innerHTML = `
             <h5>${props.name || 'Unnamed Point'}</h5>
             <p>${props.description || ''}</p>
             <p>Category: ${props.category || 'None'}</p>
             ${props.link ? `<p><a href="${props.link}" target="_blank">Link</a></p>` : ''}
             ${props.timestamp ? `<p>Date: ${new Date(props.timestamp).toLocaleDateString()}</p>` : ''}
-            <button class="btn btn-sm btn-primary jump-to-details-btn" data-id="${props.id}">View Details</button>
+            <button class="btn btn-sm btn-primary btn-show-in-list" data-id="${props.id}">Show in List</button>
           `;
+          
+          // Add event listener for the Show in List button
+          popupContent.querySelector('.btn-show-in-list').addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            jumpToElement(id);
+          });
           
           marker.bindPopup(popupContent);
           
