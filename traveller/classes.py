@@ -11,7 +11,7 @@ from zipfile import ZipFile
 import gpxpy
 import gpxpy.gpx
 
-from utils import make_element
+from traveller.utils import make_element
 
 
 @dataclass
@@ -26,7 +26,6 @@ class POI:
     uuid: str = field(default_factory=lambda: str(uuid4()))
     timestamp: datetime | None = None
 
-
     def __post_init__(self):
         self.latitude = float(self.latitude)
         self.longitude = float(self.longitude)
@@ -36,7 +35,6 @@ class POI:
             self.timestamp = None
         if isinstance(self.timestamp, str):
             self.timestamp = datetime.fromisoformat(self.timestamp)
-
 
     def to_gpx(
         self, categories: dict[str, dict[str, str]] | None
@@ -64,13 +62,16 @@ class POI:
 @dataclass
 class Guide:
     name: str
+    path: Path
     description: str = ""
     link: str = ""
     points: dict[str, POI] = field(default_factory=dict)
     categories: dict[str, dict[str, str]] = field(default_factory=dict)
 
-    def to_zip(self, path: str | Path) -> None:
-        path = Path(path)
+    def to_zip(self, path: str | Path | None = None) -> None:
+        path = self.path or Path(path)
+        if path is None:
+            raise ValueError("No path given")
 
         with ZipFile(path, "w") as zf:
             with zf.open("metadata.csv", "w") as infile:
@@ -122,7 +123,7 @@ class Guide:
 
                     points = {d["uuid"]: POI(**d) for d in reader}
 
-        return Guide(**metadata, categories=categories, points=points)
+        return Guide(**metadata, categories=categories, points=points, path=path)
 
     def to_gpx(self, path: str | Path | None = None) -> str | None:
         gpx = gpxpy.gpx.GPX()
@@ -159,7 +160,7 @@ class Guide:
             path = Path(path)
             if path.is_file():
                 with path.open("r") as gpx_file:
-                    with path.with_suffix('.gpx.bak').open("w") as bak_file:
+                    with path.with_suffix(".gpx.bak").open("w") as bak_file:
                         bak_file.write(gpx_file.read())
 
             with path.open("w") as gpx_file:

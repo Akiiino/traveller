@@ -10,5 +10,3 @@ def make_element(
     if children:
         element.extend(children)
     return element
-
-

@@ -1,0 +1,41 @@
+<!-- Desktop Table View -->
+<div class="desktop-view">
+  <table class="table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Type</th>
+        <th>Link</th>
+        <th>Date</th>
+        <th>Coordinates</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody hx-target="closest tr" hx-swap="outerHTML">
+      {% for id, point in points %}
+        {% include 'row.j2.html' %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Mobile Card View -->
+<div class="mobile-view">
+  <div class="poi-cards" hx-target="closest .poi-card" hx-swap="outerHTML">
+    {% for id, point in points %}
+      {% include 'card.j2.html' %}
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Add new POI button - works for both views -->
+<button
+  class="btn btn-primary add-poi-btn"
+  hx-get="/new_point"
+  hx-target=".desktop-view tbody, .mobile-view .poi-cards"
+  hx-swap="beforeend"
+>
+  Add Point
+</button>

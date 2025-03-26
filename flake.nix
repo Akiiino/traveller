@@ -42,7 +42,7 @@
             pkgs.moreutils
             pkgs.diffutils
             pkgs.pre-commit
-            (pkgs.python3.withPackages (p: with p; [flask gunicorn python-lsp-server jupyterlab gpxpy]))
+            (pkgs.python3.withPackages (p: with p; [flask gunicorn python-lsp-server jupyterlab gpxpy watchdog]))
 
             pkgs.nodePackages.stylelint
             pkgs.djhtml
