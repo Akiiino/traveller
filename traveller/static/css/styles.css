@@ -23,6 +23,27 @@ body {
   margin: 4px;
 }
 
+/* Button styling for popup */
+.btn-show-in-list {
+  margin-top: 10px;
+  width: 100%;
+}
+
+/* Highlight effect for POI elements */
+@keyframes highlight-animation {
+  0% { background-color: rgba(255, 251, 130, 0.8); }
+  100% { background-color: transparent; }
+}
+
+.highlight-poi {
+  animation: highlight-animation 2s ease-out;
+}
+
+tr.highlight-poi {
+  position: relative;
+  z-index: 10;
+}
+
 .view-tabs {
   display: flex;
   margin-bottom: 15px;
@@ -224,34 +245,6 @@ body {
 #date-filter {
   width: auto;
   display: inline-block;
-}
-
-/* Highlight effect for POIs */
-.highlight-poi {
-  animation: highlight-pulse 2s ease-out;
-  position: relative;
-  z-index: 1;
-}
-
-@keyframes highlight-pulse {
-  0%, 20% {
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.5);
-    background-color: rgba(13, 110, 253, 0.15);
-    transform: scale(1.02);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
-    background-color: transparent;
-    transform: scale(1);
-  }
-}
-
-/* Make the popup button more prominent */
-.marker-popup .jump-to-details-btn {
-  display: block;
-  width: 100%;
-  margin-top: 8px;
-  text-align: center;
 }
 
 @media (max-width: 991px) {
