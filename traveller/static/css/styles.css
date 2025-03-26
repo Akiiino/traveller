@@ -226,6 +226,22 @@ body {
   display: inline-block;
 }
 
+/* Popup styling */
+.poi-popup {
+  min-width: 200px;
+}
+
+.poi-popup .btn {
+  margin-top: 10px;
+  width: 100%;
+}
+
+/* Highlight effect for found items when jumping from map to details */
+tr[data-id].highlight-row td,
+.poi-card.highlight-card {
+  transition: background-color 1.5s ease;
+}
+
 @media (max-width: 991px) {
   .view-tabs {
     display: flex;
