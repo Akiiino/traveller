@@ -44,13 +44,13 @@
             pkgs.pre-commit
             (pkgs.python3.withPackages (p: with p; [flask gunicorn python-lsp-server jupyterlab gpxpy watchdog]))
 
-            pkgs.nodePackages.stylelint
+            pkgs.stylelint
             pkgs.djhtml
             pkgs.djlint
-            pkgs.csslint
+            # pkgs.csslint
 
-			pkgs.ruff
-			pkgs.black
+            pkgs.ruff
+            pkgs.black
             # (addFlags pkgs.ruff ["--config=${ruffTOML}"])
             (addFlags pkgs.mypy ["--ignore-missing-imports"])
             # (addFlags pkgs.black ["--target-version=py310"])
