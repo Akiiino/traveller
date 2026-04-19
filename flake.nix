@@ -59,7 +59,7 @@
             (pkgs.writeShellScriptBin "run_server" ''
               gunicorn -b 0.0.0.0:8000 --reload \
               $(find templates -type f -name '*.j2.html' -exec echo --reload-extra-file {} \;) \
-              serve:app
+              traveller.app:create_app\(\) \
               sleep 1
             '')
           ];
