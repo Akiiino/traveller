@@ -2,7 +2,7 @@ from flask import Flask
 from jinja2 import StrictUndefined
 from traveller.classes import Guide
 
-GUIDE_PATH = "korea.zip"
+GUIDE_PATH = "japan.zip"
 
 
 def create_app():
