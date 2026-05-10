@@ -98,5 +98,83 @@
     });
 
     formatter = forAllSystems treefmtFor;
+
+    nixosModules.default = {
+      config,
+      lib,
+      pkgs,
+      ...
+    }: let
+      cfg = config.services.traveller;
+    in {
+      options.services.traveller = {
+        enable = lib.mkEnableOption "the Traveller travel planning web app";
+
+        package = lib.mkOption {
+          type = lib.types.package;
+          default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          defaultText = lib.literalExpression "traveller.packages.\${system}.default";
+          description = "The traveller package to use.";
+        };
+
+        bind = lib.mkOption {
+          type = lib.types.str;
+          default = "127.0.0.1:8000";
+          example = "unix:/run/traveller/traveller.sock";
+          description = "Address gunicorn binds to (passed verbatim as --bind).";
+        };
+
+        workers = lib.mkOption {
+          type = lib.types.ints.positive;
+          default = 2;
+          description = "Number of gunicorn worker processes.";
+        };
+
+        extraArgs = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [];
+          example = ["--access-logfile" "-" "--timeout" "60"];
+          description = "Extra arguments forwarded to gunicorn.";
+        };
+      };
+
+      config = lib.mkIf cfg.enable {
+        systemd.services.traveller = {
+          description = "Traveller travel planning web app";
+          wantedBy = ["multi-user.target"];
+          after = ["network.target"];
+
+          serviceConfig = {
+            ExecStart = lib.escapeShellArgs ([
+                "${cfg.package}/bin/traveller"
+                "--bind"
+                cfg.bind
+                "--workers"
+                (toString cfg.workers)
+              ]
+              ++ cfg.extraArgs);
+
+            DynamicUser = true;
+            StateDirectory = "traveller";
+            WorkingDirectory = "%S/traveller";
+            Restart = "on-failure";
+
+            # Hardening
+            ProtectSystem = "strict";
+            ProtectHome = true;
+            NoNewPrivileges = true;
+            PrivateTmp = true;
+            PrivateDevices = true;
+            ProtectKernelTunables = true;
+            ProtectKernelModules = true;
+            ProtectControlGroups = true;
+            RestrictAddressFamilies = ["AF_UNIX" "AF_INET" "AF_INET6"];
+            LockPersonality = true;
+            RestrictRealtime = true;
+            SystemCallArchitectures = "native";
+          };
+        };
+      };
+    };
   };
 }

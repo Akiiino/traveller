@@ -1,8 +1,11 @@
+import os
+from pathlib import Path
+
 from flask import Flask
 from jinja2 import StrictUndefined
 from traveller.classes import Guide
 
-GUIDE_PATH = "japan.zip"
+GUIDE_PATH = Path(os.environ.get("STATE_DIRECTORY", ".")) / "japan.zip"
 
 
 def create_app():
