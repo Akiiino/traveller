@@ -1,0 +1,3 @@
+# Prettier doesn't understand Jinja syntax inside HTML attributes; djlint
+# (configured via pyproject.toml) handles these instead.
+*.j2.html

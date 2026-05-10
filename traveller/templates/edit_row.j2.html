@@ -1,34 +1,58 @@
-<tr hx-trigger="cancel" class="editing" hx-get="/point/{{ id }}">
+<tr id="row-poi-{{ point.uuid }}"
+    class="editing {% if conflict %}conflict{% endif %}"
+    hx-trigger="cancel"
+    hx-get="{{ url_for('views.point', guide_id=guide_id, uuid=point.uuid) }}">
     <td></td>
     <td>
-        <input name="name" style="width:100%" value="{{ point.name or '' }}">
+        <input name="name" class="full-width" value="{{ point.name or '' }}">
     </td>
     <td>
         <textarea name="description"
-                  style="width:100%"
+                  class="full-width"
                   oninput='this.style.height = "";this.style.height = this.scrollHeight + "px"'>{{ point.description or '' }}</textarea>
     </td>
     <td>
         <select name="category">
-            {% for category in categories %}<option value="{{ category }}" {{ 'selected' if point.category == category else '' }}>{{ category }}</option>{% endfor %}
+            {% for category in categories %}
+                <option value="{{ category.name }}"
+                        {{ 'selected' if point.category == category.name else '' }}>{{ category.name }}
+                </option>
+            {% endfor %}
         </select>
     </td>
     <td>
-        <input name="link" style="width:100%" value="{{ (point.link or '') | string | replace("&amp;", "&") }}">
+        <input name="link" class="full-width" value="{{ point.link or '' }}">
     </td>
-    <td><input id="party" type="datetime-local" name="timestamp" value="{{ "" if point.timestamp is none else point.timestamp.strftime('%Y-%m-%dT%H:%M') }}"/></td>
+    <td>
+        <input type="datetime-local"
+               name="timestamp"
+               value="{{ '' if point.timestamp is none else point.timestamp.strftime('%Y-%m-%dT%H:%M') }}" />
+    </td>
     <td>
         <input name="coordinates"
-               style="width:100%"
-               value="{{ point.latitude }}, {{ point.longitude }}"
+               class="full-width"
+               value="{% if point.has_coords %}{{ point.latitude }}, {{ point.longitude }}{% endif %}"
                pattern="-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?"
-               title="Enter coordinates as latitude, longitude (e.g., 37.5665, 126.9780)"
-               required>
+               title="Enter coordinates as latitude, longitude (e.g., 37.5665, 126.9780)">
     </td>
     <td>
+        <input type="hidden"
+               name="modified_at"
+               value="{{ point.modified_at.isoformat() if point.modified_at else '' }}">
+        {% if conflict %}
+            <div class="conflict-banner"
+                 title="Your unsaved changes are still in the form. Save again to overwrite the other version, or copy your text first.">
+                Saved by someone else — review and save again to overwrite
+            </div>
+        {% endif %}
         <div class="poi-actions-compact">
-            <button class="btn-icon btn-danger" hx-get="/point/{{ id }}" title="Cancel">❌</button>
-            <button class="btn-icon btn-primary" hx-put="/point/{{ id }}" hx-include="closest tr" title="Save">✔️</button>
+            <button class="btn-icon btn-danger"
+                    hx-get="{{ url_for('views.point', guide_id=guide_id, uuid=point.uuid) }}"
+                    title="Cancel">❌</button>
+            <button class="btn-icon btn-primary"
+                    hx-put="{{ url_for('views.point', guide_id=guide_id, uuid=point.uuid) }}"
+                    hx-include="closest tr"
+                    title="Save">✔️</button>
         </div>
     </td>
 </tr>

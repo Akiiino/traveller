@@ -34,6 +34,8 @@
       projectRootFile = "flake.nix";
       programs.alejandra.enable = true;
       programs.prettier.enable = true;
+      # Jinja templates aren't valid HTML; djlint owns those.
+      settings.formatter.prettier.excludes = ["*.j2.html" "*.md"];
       programs.black.enable = true;
       programs.isort = {
         enable = true;
@@ -98,6 +100,28 @@
     });
 
     formatter = forAllSystems treefmtFor;
+
+    # `nix flake check` runs all of these. They each get a fresh, writable
+    # copy of the source tree so the tools can scribble caches into it.
+    checks = forAllSystems (pkgs: let
+      python = pkgs.python3;
+      testEnv = python.withPackages (project.renderers.withPackages {
+        inherit python;
+        extras = ["test"];
+      });
+      runOnSrc = name: nativeBuildInputs: script:
+        pkgs.runCommand name {inherit nativeBuildInputs;} ''
+          cp -r --no-preserve=mode ${./.} ./src
+          cd ./src
+          export HOME=$TMPDIR
+          ${script}
+          touch $out
+        '';
+    in {
+      pytest = runOnSrc "pytest-check" [testEnv] "pytest -p no:cacheprovider";
+      treefmt = runOnSrc "treefmt-check" [(treefmtFor pkgs)] "treefmt --ci --no-cache";
+      djlint = runOnSrc "djlint-check" [pkgs.djlint] "djlint --check --lint traveller/templates";
+    });
 
     nixosModules.default = {
       config,

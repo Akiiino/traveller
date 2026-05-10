@@ -1,45 +1,53 @@
-<div class="poi-card" data-id="{{ id }}" id="poi-{{ id }}">
+<div class="poi-card"
+     data-id="{{ point.uuid }}"
+     id="card-poi-{{ point.uuid }}">
     <div class="poi-header">
         <div class="poi-status">
-            <input type="checkbox" name="visited" hx-put="/point/{{id}}/visited" hx-swap="none" {{ 'checked' if point.visited == True else '' }}>
+            <input type="checkbox"
+                   name="visited"
+                   hx-put="{{ url_for('views.toggle_visited', guide_id=guide_id, uuid=point.uuid) }}"
+                   hx-swap="none"
+                   {{ 'checked' if point.visited else '' }}>
         </div>
         <div class="poi-title">
             <h3>{{ point.name or 'Unnamed Point' }}</h3>
             <span class="category-badge">{{ point.category or 'Uncategorized' }}</span>
         </div>
         <div class="poi-actions-compact">
-            <button class="btn-icon btn-edit" hx-get="/point/{{ id }}/edit" title="Edit">✏️</button>
-            <button class="btn-icon btn-delete" hx-confirm="Are you sure?" hx-delete="/point/{{ id }}" title="Delete">🗑️</button>
-            <button class="btn-icon btn-show-on-map" data-id="{{ id }}" title="Show on Map">🗺️</button>
+            <button class="btn-icon btn-edit"
+                    hx-get="{{ url_for('views.point_edit', guide_id=guide_id, uuid=point.uuid) }}"
+                    title="Edit">✏️</button>
+            <button class="btn-icon btn-delete"
+                    hx-confirm="Are you sure?"
+                    hx-delete="{{ url_for('views.point', guide_id=guide_id, uuid=point.uuid) }}"
+                    title="Delete">🗑️</button>
+            <button class="btn-icon btn-show-on-map"
+                    data-id="{{ point.uuid }}"
+                    title="Show on Map">🗺️</button>
         </div>
     </div>
-    
     <div class="poi-preview">
-        {% if point.latitude != 0 or point.longitude != 0 %}
+        {% if point.has_coords %}
             <span class="coordinates-badge">
                 <a href="nmap://place?lat={{ point.latitude }}&lng={{ point.longitude }}&name={{ point.name | urlencode }}&appname=com.example.myapp">
                     {{ '%0.4f' % point.latitude }}, {{ '%0.4f' % point.longitude }}
                 </a>
             </span>
         {% endif %}
-        
         {% if point.timestamp %}
-            <span class="date-badge">{{ point.timestamp.strftime('%b %d, %H:%M') }}</span>
+            <span class="date-badge">{{ point.timestamp.strftime("%b %d, %H:%M") }}</span>
         {% endif %}
     </div>
-    
     <div class="poi-details">
         {% if point.description %}
             <div class="description">
                 <p>{{ (point.description or '') | urlize }}</p>
             </div>
         {% endif %}
-        
         {% if point.link %}
             <div class="link">
                 <a href="{{ point.link }}" target="_blank" class="link-btn">Visit Link</a>
             </div>
         {% endif %}
     </div>
-    
 </div>
