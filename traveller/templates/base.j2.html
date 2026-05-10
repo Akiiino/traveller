@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Travel Guide</title>
     <link
       href="https://cdn.jsdelivr.net/npm/uikit@3.16.26/dist/css/uikit.min.css"
@@ -14,45 +17,55 @@
       integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9"
       crossorigin="anonymous"
     />
-    <link 
-      rel="stylesheet" 
+    <link
+      rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
   </head>
   <body>
     <div class="container">
       <h1 class="mb-4">Travel Guide</h1>
-      
+
       <div class="view-tabs">
         <div class="view-tab active" data-target="map-container">Map View</div>
         <div class="view-tab" data-target="table-container">List View</div>
       </div>
-      
+
       <div class="map-table-container">
         <div id="map-container">
           <div class="map-controls">
             <button class="fullscreen-btn" id="fullscreen-toggle">⛶</button>
           </div>
-          
+
           <div id="map"></div>
           <div class="mb-3">
-            <button id="fit-bounds" class="btn btn-sm btn-secondary">Show All Markers</button>
+            <button id="fit-bounds" class="btn btn-sm btn-secondary">
+              Show All Markers
+            </button>
             <div class="form-check form-check-inline">
-              <input class="form-check-input" type="checkbox" id="show-visited" checked>
-              <label class="form-check-label" for="show-visited">Show Visited</label>
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="show-visited"
+                checked
+              />
+              <label class="form-check-label" for="show-visited"
+                >Show Visited</label
+              >
             </div>
           </div>
         </div>
-        
-        <div id="table-container">
-          {% include 'table.j2.html' %}
-        </div>
+
+        <div id="table-container">{% include 'table.j2.html' %}</div>
       </div>
-      
+
       <div class="mt-4">
         <form action="api/export_gpx">
           <input
@@ -64,18 +77,18 @@
       </div>
     </div>
 
-    <script 
+    <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    
+
     <script
       src="https://unpkg.com/htmx.org@1.9.5"
       integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO"
       crossorigin=""
     ></script>
-    
+
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, current_app, jsonify
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
