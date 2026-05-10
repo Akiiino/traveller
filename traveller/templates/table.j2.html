@@ -14,9 +14,7 @@
       </tr>
     </thead>
     <tbody hx-target="closest tr" hx-swap="outerHTML">
-      {% for id, point in points %}
-        {% include 'row.j2.html' %}
-      {% endfor %}
+      {% for id, point in points %} {% include 'row.j2.html' %} {% endfor %}
     </tbody>
   </table>
 </div>
@@ -24,9 +22,7 @@
 <!-- Mobile Card View -->
 <div class="mobile-view">
   <div class="poi-cards" hx-target="closest .poi-card" hx-swap="outerHTML">
-    {% for id, point in points %}
-      {% include 'card.j2.html' %}
-    {% endfor %}
+    {% for id, point in points %} {% include 'card.j2.html' %} {% endfor %}
   </div>
 </div>
 

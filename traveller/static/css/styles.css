@@ -51,18 +51,18 @@ body {
 
 .fullscreen-btn {
   background: white;
-  border: 2px solid rgba(0,0,0,0.2);
+  border: 2px solid rgba(0, 0, 0, 0.2);
   border-radius: 4px;
   padding: 5px 10px;
   font-size: 16px;
   cursor: pointer;
-  box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
 }
 
 .poi-card {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   margin-bottom: 15px;
   padding: 15px;
   position: relative;
@@ -137,7 +137,8 @@ body {
   margin-bottom: 10px;
 }
 
-.coordinates-badge, .date-badge {
+.coordinates-badge,
+.date-badge {
   font-size: 12px;
   background: #f8f9fa;
   padding: 3px 8px;
@@ -173,11 +174,17 @@ body {
   display: none;
 }
 
-.poi-details:not(.collapsed) + .poi-actions .btn-toggle-details .show-details-text {
+.poi-details:not(.collapsed)
+  + .poi-actions
+  .btn-toggle-details
+  .show-details-text {
   display: none;
 }
 
-.poi-details:not(.collapsed) + .poi-actions .btn-toggle-details .hide-details-text {
+.poi-details:not(.collapsed)
+  + .poi-actions
+  .btn-toggle-details
+  .hide-details-text {
   display: inline;
 }
 
@@ -270,15 +277,16 @@ tr.highlight-element,
   .view-tabs {
     display: flex;
   }
-  
-  #map-container, #table-container {
+
+  #map-container,
+  #table-container {
     width: 100%;
   }
-  
+
   #table-container {
     display: none;
   }
-  
+
   .map-fullscreen {
     position: fixed;
     top: 0;
@@ -289,23 +297,23 @@ tr.highlight-element,
     margin: 0;
     padding: 0;
   }
-  
+
   .map-fullscreen #map {
     height: 100%;
   }
-  
+
   .mobile-view {
     display: block;
   }
   .desktop-view {
     display: none;
   }
-  
+
   /* Mobile date filter styles */
   .date-filter-container {
     flex-direction: column;
   }
-  
+
   #date-filter {
     width: 100%;
     margin-bottom: 5px;
@@ -316,27 +324,27 @@ tr.highlight-element,
   .view-tabs {
     display: none;
   }
-  
+
   .map-controls {
     display: none;
   }
-  
+
   .map-table-container {
     flex-direction: row;
   }
-  
+
   #map-container {
     flex: 1;
     position: sticky;
     top: 20px;
     align-self: flex-start;
   }
-  
+
   #table-container {
     flex: 1;
     display: block !important;
   }
-  
+
   .desktop-view {
     display: block;
   }

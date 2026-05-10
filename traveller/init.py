@@ -1,4 +1,4 @@
-from classes import Guide, POI
+from classes import POI, Guide
 
 points = {
     "1": POI(

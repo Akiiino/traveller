@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, current_app
-
-from flask import request, Response
 from datetime import datetime
+
+from flask import Blueprint, Response, current_app, render_template, request
+
 from traveller.classes import POI
 
 views_bp = Blueprint("views", __name__)
