@@ -20,6 +20,10 @@ dev = [
     "python-lsp-server",
     "jupyterlab",
     "watchdog",
+    "pytest",
+]
+test = [
+    "pytest",
 ]
 
 [project.scripts]
@@ -27,3 +31,13 @@ traveller = "traveller.__main__:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["traveller"]
+
+[tool.djlint]
+profile = "jinja"
+# H030/H031: SEO meta tags (irrelevant for a VPN-only app).
+# J018: false-positive on the nmap:// deep link.
+# T028: stylistic preference for spaceless tags inside attribute values.
+ignore = "H030,H031,J018,T028"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

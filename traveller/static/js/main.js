@@ -1,5 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
   const savedTab = localStorage.getItem("selectedTab");
+  const guideId = document.body.dataset.guideId;
+  if (!guideId) {
+    return; // Index page; no map.
+  }
+  const geojsonUrl = `/api/guide/${guideId}/points_geojson`;
 
   // Update the map button click handler
   document.addEventListener("click", function (e) {
@@ -130,7 +135,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
   function loadPOIs() {
-    fetch("/api/points_geojson")
+    fetch(geojsonUrl)
       .then((response) => response.json())
       .then((data) => {
         markerGroup.clearLayers();
@@ -191,7 +196,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
           const row = document.querySelector(`tr[data-id="${props.id}"]`);
           if (row) {
-            row.id = `poi-${props.id}`;
             attachRowHoverEvents(row, props.id);
           }
         });

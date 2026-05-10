@@ -192,6 +192,33 @@ body {
   width: 100%;
 }
 
+.full-width {
+  width: 100%;
+}
+
+.description-cell {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Conflict styling: shown when a save was rejected because the row was
+   modified by someone else. The form keeps the user's typed values so
+   nothing is lost; clicking Save again will overwrite. */
+.editing.conflict {
+  outline: 2px solid #d9534f;
+  background-color: rgba(217, 83, 79, 0.06);
+}
+
+.conflict-banner {
+  background: #f8d7da;
+  color: #842029;
+  border: 1px solid #f5c2c7;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
 .form-group label {
   font-weight: 500;
   margin-bottom: 5px;

@@ -1,52 +1,72 @@
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, abort, current_app, jsonify
+
+from traveller.gpx import guide_to_gpx
+from traveller.storage import Storage
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 
-@api_bp.route("/points_geojson")
-def points_geojson():
-    """Return POIs as GeoJSON for map display"""
+def _storage() -> Storage:
+    return current_app.config["storage"]
+
+
+@api_bp.route("/guide/<int:guide_id>/points_geojson")
+def points_geojson(guide_id: int):
+    storage = _storage()
+    if storage.get_guide(guide_id) is None:
+        abort(404)
     features = []
-
-    for id, point in current_app.config["guide"].points.items():
-        feature = {
-            "type": "Feature",
-            "geometry": {
-                "type": "Point",
-                "coordinates": [point.longitude, point.latitude],
-            },
-            "properties": {
-                "id": id,
-                "name": point.name,
-                "description": point.description,
-                "category": point.category,
-                "visited": point.visited,
-                "link": point.link,
-                "timestamp": point.timestamp.isoformat() if point.timestamp else None,
-            },
-        }
-        features.append(feature)
-
-    geojson = {"type": "FeatureCollection", "features": features}
-
-    return jsonify(geojson)
-
-
-@api_bp.route("/export_gpx", methods=["GET"])
-def export_gpx():
-    """Export POIs as GPX file"""
-    try:
-        xml_content = current_app.config["guide"].to_gpx()
-        if not xml_content:
-            raise ValueError("Failed to generate GPX content")
-
-        return current_app.response_class(
-            xml_content,
-            mimetype="application/gpx+xml",
-            headers={
-                "Content-Disposition": f'attachment; filename={current_app.config["guide"].name.replace(" ", "_")}.gpx'
-            },
+    for poi in storage.list_points(guide_id):
+        if not poi.has_coords:
+            continue
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [poi.longitude, poi.latitude],
+                },
+                "properties": {
+                    "id": poi.uuid,
+                    "name": poi.name,
+                    "description": poi.description,
+                    "category": poi.category,
+                    "visited": poi.visited,
+                    "link": poi.link,
+                    "timestamp": (poi.timestamp.isoformat() if poi.timestamp else None),
+                },
+            }
         )
-    except Exception as e:
-        current_app.logger.error(f"Error exporting GPX: {str(e)}")
-        return "Error exporting GPX. Please try again.", 500
+    return jsonify({"type": "FeatureCollection", "features": features})
+
+
+@api_bp.route("/guide/<int:guide_id>/categories")
+def categories(guide_id: int):
+    storage = _storage()
+    if storage.get_guide(guide_id) is None:
+        abort(404)
+    return jsonify(
+        {
+            c.name: {"color": c.color, "icon": c.icon}
+            for c in storage.list_categories(guide_id)
+        }
+    )
+
+
+@api_bp.route("/guide/<int:guide_id>/export_gpx")
+def export_gpx(guide_id: int):
+    storage = _storage()
+    guide = storage.get_guide(guide_id)
+    if guide is None:
+        abort(404)
+    xml = guide_to_gpx(
+        guide,
+        storage.list_categories(guide_id),
+        storage.list_points(guide_id),
+    )
+    filename = "".join(c if c.isalnum() else "_" for c in guide.name) or "guide"
+    return current_app.response_class(
+        xml,
+        mimetype="application/gpx+xml",
+        headers={"Content-Disposition": f"attachment; filename={filename}.gpx"},
+    )

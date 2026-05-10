@@ -161,4 +161,6 @@ cython_debug/
 
 *.gpx
 *.zip
+*.zip.imported
 .direnv
+traveller.db
