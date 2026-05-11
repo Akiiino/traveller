@@ -26,14 +26,21 @@
     <td>
         <input type="datetime-local"
                name="timestamp"
-               value="{{ '' if point.timestamp is none else point.timestamp.strftime('%Y-%m-%dT%H:%M') }}" />
+               class="{% if 'timestamp' in errors %}field-error{% endif %}"
+               value="{% if 'timestamp' in raw %}{{ raw.timestamp }}{% elif point.timestamp is not none %}{{ point.timestamp.strftime('%Y-%m-%dT%H:%M') }}{% endif %}" />
+        {% if 'timestamp' in errors %}
+            <div class="field-error-msg">Use YYYY-MM-DDTHH:MM</div>
+        {% endif %}
     </td>
     <td>
         <input name="coordinates"
-               class="full-width"
-               value="{% if point.has_coords %}{{ point.latitude }}, {{ point.longitude }}{% endif %}"
+               class="full-width {% if 'coordinates' in errors %}field-error{% endif %}"
+               value="{% if 'coordinates' in raw %}{{ raw.coordinates }}{% elif point.has_coords %}{{ point.latitude }}, {{ point.longitude }}{% endif %}"
                pattern="-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?"
                title="Enter coordinates as latitude, longitude (e.g., 37.5665, 126.9780)">
+        {% if 'coordinates' in errors %}
+            <div class="field-error-msg">Use "lat, lon" (e.g. 37.5665, 126.9780)</div>
+        {% endif %}
     </td>
     <td>
         <input type="hidden"

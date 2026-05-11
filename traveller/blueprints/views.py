@@ -85,6 +85,8 @@ def _render_edit(
     guide_id: int,
     *,
     conflict: bool = False,
+    errors: set[str] | None = None,
+    raw: dict[str, str] | None = None,
     status: int = 200,
 ) -> Response:
     categories = _storage().list_categories(guide_id)
@@ -95,6 +97,8 @@ def _render_edit(
         guide_id=guide_id,
         categories=categories,
         conflict=conflict,
+        errors=errors or set(),
+        raw=raw or {},
     )
     return Response(body, status=status)
 
@@ -162,7 +166,40 @@ def point(guide_id: int, uuid: str):
         return Response(status=200)
 
     if request.method == "PUT":
-        lat, lon = _parse_coords(request.form.get("coordinates", ""))
+        coords_raw = request.form.get("coordinates", "")
+        ts_raw = request.form.get("timestamp", "")
+        lat, lon = _parse_coords(coords_raw)
+        ts = _parse_dt(ts_raw)
+
+        # Validate fields that can be malformed (vs. legitimately empty).
+        # Bad input previously got silently coerced to NULL on the on-disk
+        # row, hiding typos from the user. Now we 400 and echo the raw text
+        # back with a per-field error highlight.
+        errors: set[str] = set()
+        if coords_raw.strip() and (lat is None or lon is None):
+            errors.add("coordinates")
+        if ts_raw.strip() and ts is None:
+            errors.add("timestamp")
+
+        if errors:
+            existing = storage.get_point(guide_id, uuid)
+            if existing is None:
+                abort(404)
+            attempted = POI(
+                uuid=uuid,
+                name=request.form.get("name", ""),
+                description=request.form.get("description", ""),
+                latitude=lat,
+                longitude=lon,
+                visited=existing.visited,
+                link=request.form.get("link", "") or None,
+                category=request.form.get("category", "").strip(),
+                timestamp=ts,
+                modified_at=existing.modified_at,
+            )
+            raw = {"coordinates": coords_raw, "timestamp": ts_raw}
+            return _render_edit(attempted, guide_id, errors=errors, raw=raw, status=400)
+
         try:
             expected_modified_at = datetime.fromisoformat(
                 request.form.get("modified_at", "")
@@ -180,7 +217,7 @@ def point(guide_id: int, uuid: str):
                 longitude=lon,
                 link=_sanitize_link(request.form.get("link", "")),
                 category=request.form.get("category", "").strip(),
-                timestamp=_parse_dt(request.form.get("timestamp", "")),
+                timestamp=ts,
             )
         except KeyError:
             abort(404)
@@ -197,7 +234,7 @@ def point(guide_id: int, uuid: str):
                 visited=exc.current.visited,
                 link=request.form.get("link", "") or None,
                 category=request.form.get("category", "").strip(),
-                timestamp=_parse_dt(request.form.get("timestamp", "")),
+                timestamp=ts,
                 modified_at=exc.current.modified_at,
             )
             return _render_edit(attempted, guide_id, conflict=True, status=409)
