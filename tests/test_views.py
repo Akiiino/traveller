@@ -206,6 +206,17 @@ def test_put_point_conflict_returns_409_with_user_input(client, storage):
     assert storage.get_point(g.id, poi.uuid).name == "first"
 
 
+def test_desktop_css_forces_map_container_visible(client):
+    # The mobile tab-switch JS writes inline `display: none` onto the
+    # inactive container. The desktop layout must `!important`-override
+    # that for *both* panes, otherwise resizing a window that was last on
+    # "List view" leaves the map permanently hidden.
+    body = client.get("/static/css/styles.css").get_data(as_text=True)
+    desktop = body.split("@media (min-width: 992px)", 1)[1]
+    map_block = desktop.split("#map-container", 1)[1].split("}", 1)[0]
+    assert "display: block !important" in map_block
+
+
 def test_main_js_swaps_on_409(client):
     # htmx 1.x ignores 4xx by default, which silently drops the conflict-form
     # response server-side already builds. main.js must opt 409 in to swap.
