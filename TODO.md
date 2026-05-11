@@ -5,9 +5,8 @@ session. Items higher in each tier are higher impact-per-effort. None of
 these is urgent — the app is working and tested.
 
 ## Bugfixes
-- On desktop, if any of the description fields contain a long string that can't
-  be broken into multiple lines (e.g. a URL), the table gets wide and the map gets
-  unusably narrow.
+
+(none currently)
 
 ## High value, modest effort
 

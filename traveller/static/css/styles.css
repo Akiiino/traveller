@@ -198,7 +198,11 @@ body {
 
 .description-cell {
   white-space: pre-wrap;
-  word-wrap: break-word;
+  /* `anywhere` (vs `break-word`) is the one that counts toward min-content
+     sizing, which is what tables and flex items use to decide their min
+     width. Without it, a long URL in a description blows the table out
+     and squeezes the desktop map to nothing. */
+  overflow-wrap: anywhere;
 }
 
 /* Conflict styling: shown when a save was rejected because the row was
@@ -373,6 +377,10 @@ tr.highlight-element,
   #table-container {
     flex: 1;
     display: block !important;
+    /* Without min-width: 0, flex items fall back to min-content sizing,
+       so a single long unbreakable token in the table forces the
+       container wider than its 50% share and squeezes the map. */
+    min-width: 0;
   }
 
   .desktop-view {
