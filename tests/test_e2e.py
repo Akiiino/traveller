@@ -1,31 +1,44 @@
-"""End-to-end browser tests for the edit-form flow.
+"""End-to-end browser tests for the guide page.
 
-These cover the bugs that grep-style "does main.js contain this string"
-tests cannot catch: real htmx swap timing, real HTML5 form validation,
-real datetime-local widget quirks, and the conflict/409 round-trip.
+These exercise real htmx swap timing, real HTML5 form validation, real
+datetime-local widget quirks, and the conflict/409 round-trip — bugs the
+grep-style JS tests can't catch.
 
-Slower than the rest of the suite (a few seconds per test) — kept in
-their own file so they can be skipped with `-k "not e2e"` when iterating.
+CRUD smoke tests are parametrized across three "views":
+- desktop-chromium  (default desktop viewport, Chromium)
+- desktop-firefox   (default desktop viewport, Firefox)
+- mobile-chromium   (Pixel-5 viewport + touch + mobile UA, Chromium)
+Mobile-Firefox is skipped — Playwright's mobile emulation needs
+``is_mobile``, which Firefox doesn't support.
+
+The narrower bug-replay tests (HTML5 validation specifics, 409 handling)
+stay on desktop-chromium only via ``@pytest.mark.only_browser``.
+
+Slower than the rest of the suite (a few seconds per case) — kept in
+their own file so they can be skipped with ``-k "not e2e"`` when iterating.
 """
 
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from datetime import datetime
 
 import pytest
 
 from traveller.models import POI
 
+# --- Browser launch + CDN stubbing ------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def browser_type_launch_args(browser_type_launch_args):
     """Make Chromium survive the network-less Nix sandbox.
 
-    `--disable-dev-shm-usage` avoids crashes when /dev/shm is too small
-    or unavailable; `--no-sandbox` skips Chromium's user-namespace
-    sandbox (we're already inside Nix's). No effect in the devshell
-    where these args are harmless redundancies.
+    ``--disable-dev-shm-usage`` avoids crashes when /dev/shm is too small
+    or unavailable; ``--no-sandbox`` skips Chromium's user-namespace
+    sandbox (we're already inside Nix's). Both are no-ops for Firefox
+    (Playwright filters them) so this is safe to leave session-scoped.
     """
     return {
         **browser_type_launch_args,
@@ -52,7 +65,7 @@ def _stub_cdn(page):
     The Nix sandbox has no network, so htmx must come from a locally
     vendored copy (path injected via TRAVELLER_HTMX_JS, fetched as a FOD
     in flake.nix). Other CDN assets (Bootstrap, Leaflet) are stubbed with
-    empty bodies — the edit-form tests don't depend on them. Missing
+    empty bodies — the flows we test don't depend on them. Missing
     Leaflet causes main.js to throw at L.map(...), but only AFTER both
     htmx event handlers are registered, so the flows we test still work.
     """
@@ -86,28 +99,191 @@ def _stub_cdn(page):
     yield
 
 
-def _open_edit(page, base_url: str, guide_id: int, uuid: str) -> None:
-    """Navigate to the guide page and put the row for `uuid` into edit mode."""
+# --- View parametrize (layout × browser) ------------------------------------
+
+
+@dataclass(frozen=True)
+class View:
+    """One concrete layout the smoke tests run against."""
+
+    layout: str  # "desktop" or "mobile"
+
+    @property
+    def is_mobile(self) -> bool:
+        return self.layout == "mobile"
+
+    def item(self, uuid: str) -> str:
+        """CSS selector for the read-only row/card of POI ``uuid``."""
+        prefix = "card-poi-" if self.is_mobile else "row-poi-"
+        return f"#{prefix}{uuid}"
+
+    def editing(self, uuid: str) -> str:
+        """CSS selector for the same row/card while it's in edit mode."""
+        return f"{self.item(uuid)}.editing"
+
+    @property
+    def container(self) -> str:
+        """The visible-on-this-viewport container that holds POI rows/cards."""
+        return ".mobile-view" if self.is_mobile else ".desktop-view"
+
+    def new_editing(self) -> str:
+        """Selector for *any* item currently in edit mode under the container."""
+        suffix = ".poi-card.editing" if self.is_mobile else "tr.editing"
+        return f"{self.container} {suffix}"
+
+    def uuid_from_id(self, dom_id: str) -> str:
+        prefix = "card-poi-" if self.is_mobile else "row-poi-"
+        assert dom_id.startswith(prefix), dom_id
+        return dom_id[len(prefix) :]
+
+
+@pytest.fixture(params=["desktop", "mobile"])
+def layout(request):
+    return request.param
+
+
+@pytest.fixture
+def browser_context_args(browser_context_args, layout, browser_name, playwright):
+    """Switch to a mobile context for the mobile layout.
+
+    Playwright's mobile emulation needs ``is_mobile`` + touch, which
+    Firefox doesn't implement — skip those combos.
+    """
+    if layout == "mobile":
+        if browser_name == "firefox":
+            pytest.skip("mobile emulation needs is_mobile, unsupported by Firefox")
+        return {**browser_context_args, **playwright.devices["Pixel 5"]}
+    return browser_context_args
+
+
+@pytest.fixture
+def view(layout) -> View:
+    return View(layout=layout)
+
+
+@pytest.fixture
+def desktop_only(layout):
+    """Mark a test as desktop-only.
+
+    Because ``browser_context_args`` depends on ``layout``, every test
+    using ``page`` is implicitly parametrized over layouts. Bug-replay
+    tests with hard-coded desktop selectors opt out via this fixture.
+    """
+    if layout != "desktop":
+        pytest.skip("desktop-only test")
+
+
+# --- Helpers ----------------------------------------------------------------
+
+
+def _open_guide(page, base_url: str, guide_id: int, view: View) -> None:
+    """Navigate to the guide page in the given viewport.
+
+    On mobile, ``#table-container`` starts hidden and the user reveals it
+    by clicking the List View tab. The tab click-handler lives in main.js
+    AFTER ``L.map(...)`` — which throws here because Leaflet is stubbed —
+    so we can't drive the tab from the test. Force-show the container as
+    a test-only workaround; the production-path coverage for tab-switching
+    is the user's responsibility on a real browser.
+    """
     page.goto(f"{base_url}/guide/{guide_id}")
-    page.locator(f"#row-poi-{uuid} .btn-edit").click()
-    # Wait until htmx has swapped the row into the editing variant.
-    page.locator(f"#row-poi-{uuid}.editing").wait_for()
+    if view.is_mobile:
+        page.evaluate(
+            "document.getElementById('table-container').style.display = 'block'"
+        )
 
 
-def test_e2e_successful_edit_updates_row(live_server, page, storage):
+def _open_edit(page, base_url: str, view: View, guide_id: int, uuid: str) -> None:
+    """Navigate to the guide and put POI ``uuid`` into edit mode."""
+    _open_guide(page, base_url, guide_id, view)
+    page.locator(f"{view.item(uuid)} .btn-edit").click()
+    page.locator(view.editing(uuid)).wait_for()
+
+
+# --- Smoke tests (run across all three views) -------------------------------
+
+
+def test_smoke_create_point(live_server, page, storage, view):
+    g = storage.create_guide(name="X")
+    _open_guide(page, live_server, g.id, view)
+
+    # Click whichever Add Point button is actually visible at this
+    # viewport — same as what a user does. The previous bug was that
+    # on mobile, the single global button appended a row to the *hidden*
+    # desktop table, leaving the visible card list empty.
+    page.locator(".add-poi-btn:visible").click()
+
+    # A new editing item must appear in the *visible* container.
+    new_item = page.locator(view.new_editing()).last
+    new_item.wait_for(timeout=5000)
+    dom_id = new_item.get_attribute("id")
+    new_uuid = view.uuid_from_id(dom_id)
+
+    # Fill name and save.
+    page.locator(f"{view.item(new_uuid)} input[name=name]").fill("smoke-created")
+    page.locator(f"{view.item(new_uuid)} .btn-primary").click()
+
+    # Item leaves edit mode and shows the new name; DB row exists.
+    page.locator(f"{view.item(new_uuid)}:not(.editing)").wait_for()
+    saved = storage.get_point(g.id, new_uuid)
+    assert saved is not None and saved.name == "smoke-created"
+
+
+def test_smoke_edit_point(live_server, page, storage, view):
     g = storage.create_guide(name="X")
     poi = storage.create_point(g.id, POI(name="orig"))
 
-    _open_edit(page, live_server, g.id, poi.uuid)
-    page.locator(f"#row-poi-{poi.uuid} input[name=name]").fill("renamed")
-    page.locator(f"#row-poi-{poi.uuid} .btn-primary").click()
+    _open_edit(page, live_server, view, g.id, poi.uuid)
+    page.locator(f"{view.item(poi.uuid)} input[name=name]").fill("renamed")
+    page.locator(f"{view.item(poi.uuid)} .btn-primary").click()
 
-    # Row re-renders in read-only mode with the new name; storage updated.
-    page.locator(f"#row-poi-{poi.uuid}:not(.editing)").wait_for()
+    page.locator(f"{view.item(poi.uuid)}:not(.editing)").wait_for()
     assert storage.get_point(g.id, poi.uuid).name == "renamed"
 
 
-def test_e2e_bad_coordinates_blocks_save_client_side(live_server, page, storage):
+def test_smoke_delete_point(live_server, page, storage, view):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="doomed"))
+
+    _open_guide(page, live_server, g.id, view)
+    # hx-confirm shows a browser dialog; auto-accept it.
+    page.on("dialog", lambda d: d.accept())
+    page.locator(f"{view.item(poi.uuid)} .btn-delete").click()
+
+    # Row/card gone from DOM, point gone from DB.
+    page.locator(view.item(poi.uuid)).wait_for(state="detached")
+    assert storage.get_point(g.id, poi.uuid) is None
+
+
+def test_smoke_toggle_visited(live_server, page, storage, view):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="visit me", visited=False))
+
+    _open_guide(page, live_server, g.id, view)
+    # The visited checkbox is inside the visible row/card.
+    page.locator(f"{view.item(poi.uuid)} input[name=visited]").click()
+
+    # The toggle endpoint returns 200 with no body (hx-swap="none"); poll
+    # the DB until it lands rather than waiting for a DOM change.
+    for _ in range(50):
+        if storage.get_point(g.id, poi.uuid).visited:
+            return
+        page.wait_for_timeout(50)
+    raise AssertionError("visited toggle never reached the DB")
+
+
+# --- Bug-replay tests (desktop-chromium only) -------------------------------
+#
+# These poke at specific edge cases (HTML5 validation specifics, 409
+# round-trip) that aren't viewport-specific. Running them once against
+# the canonical engine is enough; cross-browser coverage doesn't add
+# signal here.
+
+
+@pytest.mark.only_browser("chromium")
+def test_e2e_bad_coordinates_blocks_save_client_side(
+    live_server, page, storage, desktop_only
+):
     # The coordinates input has pattern="-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?".
     # With our htmx:beforeRequest validator, a pattern mismatch must be
     # caught client-side: the field gets `field-error`, the request never
@@ -115,26 +291,26 @@ def test_e2e_bad_coordinates_blocks_save_client_side(live_server, page, storage)
     g = storage.create_guide(name="X")
     poi = storage.create_point(g.id, POI(name="orig", latitude=1.0, longitude=2.0))
     initial_modified = poi.modified_at
+    view = View(layout="desktop")
 
-    _open_edit(page, live_server, g.id, poi.uuid)
-    page.locator(f"#row-poi-{poi.uuid} input[name=coordinates]").fill("garbage")
-    page.locator(f"#row-poi-{poi.uuid} .btn-primary").click()
+    _open_edit(page, live_server, view, g.id, poi.uuid)
+    page.locator(f"{view.item(poi.uuid)} input[name=coordinates]").fill("garbage")
+    page.locator(f"{view.item(poi.uuid)} .btn-primary").click()
 
-    # Field-error class lands on the bad input. Still in edit mode (no swap).
-    coords = page.locator(f"#row-poi-{poi.uuid} input[name=coordinates]")
+    coords = page.locator(f"{view.item(poi.uuid)} input[name=coordinates]")
     page.wait_for_function(
         "el => el.classList.contains('field-error')",
         arg=coords.element_handle(),
     )
-    assert page.locator(f"#row-poi-{poi.uuid}.editing").count() == 1
+    assert page.locator(view.editing(poi.uuid)).count() == 1
 
-    # On-disk row is untouched: same coords, same modified_at.
     saved = storage.get_point(g.id, poi.uuid)
     assert saved.latitude == 1.0 and saved.longitude == 2.0
     assert saved.modified_at == initial_modified
 
 
-def test_e2e_partial_datetime_blocks_save(live_server, page, storage):
+@pytest.mark.only_browser("chromium")
+def test_e2e_partial_datetime_blocks_save(live_server, page, storage, desktop_only):
     # The original bug: typing only the date part (no time) into a
     # datetime-local widget makes the browser submit "" — the server
     # cannot distinguish that from "user cleared the field" and silently
@@ -143,9 +319,10 @@ def test_e2e_partial_datetime_blocks_save(live_server, page, storage):
     original_ts = datetime(2024, 1, 2, 12, 0)
     g = storage.create_guide(name="X")
     poi = storage.create_point(g.id, POI(name="orig", timestamp=original_ts))
+    view = View(layout="desktop")
 
-    _open_edit(page, live_server, g.id, poi.uuid)
-    ts_input = page.locator(f"#row-poi-{poi.uuid} input[name=timestamp]")
+    _open_edit(page, live_server, view, g.id, poi.uuid)
+    ts_input = page.locator(f"{view.item(poi.uuid)} input[name=timestamp]")
 
     # Force a partial-input state: a value that the input itself would
     # reject (so .value === "" and validity.badInput === true) but that
@@ -173,27 +350,30 @@ def test_e2e_partial_datetime_blocks_save(live_server, page, storage):
             el.checkValidity = () => false;
         }"""
     )
-    page.locator(f"#row-poi-{poi.uuid} .btn-primary").click()
+    page.locator(f"{view.item(poi.uuid)} .btn-primary").click()
 
-    # Field-error lands; still in edit mode; timestamp untouched on disk.
     page.wait_for_function(
         "el => el.classList.contains('field-error')",
         arg=ts_input.element_handle(),
     )
-    assert page.locator(f"#row-poi-{poi.uuid}.editing").count() == 1
+    assert page.locator(view.editing(poi.uuid)).count() == 1
     assert storage.get_point(g.id, poi.uuid).timestamp == original_ts
 
 
-def test_e2e_stale_modified_at_shows_conflict_banner(live_server, page, storage):
+@pytest.mark.only_browser("chromium")
+def test_e2e_stale_modified_at_shows_conflict_banner(
+    live_server, page, storage, desktop_only
+):
     # End-to-end version of the existing test_put_point_conflict_*: open
     # the form, have someone else save in the background, type something,
     # click save — verify the banner appears AND the typed value is still
     # in the form (not silently replaced with on-disk values).
     g = storage.create_guide(name="X")
     poi = storage.create_point(g.id, POI(name="orig"))
+    view = View(layout="desktop")
 
-    _open_edit(page, live_server, g.id, poi.uuid)
-    page.locator(f"#row-poi-{poi.uuid} input[name=name]").fill("user-typed")
+    _open_edit(page, live_server, view, g.id, poi.uuid)
+    page.locator(f"{view.item(poi.uuid)} input[name=name]").fill("user-typed")
 
     # Out-of-band save bumps modified_at; the form's hidden field is now stale.
     storage.update_point(
@@ -209,14 +389,11 @@ def test_e2e_stale_modified_at_shows_conflict_banner(live_server, page, storage)
         timestamp=None,
     )
 
-    page.locator(f"#row-poi-{poi.uuid} .btn-primary").click()
+    page.locator(f"{view.item(poi.uuid)} .btn-primary").click()
 
-    # Conflict banner appears (HTTP 409 was swapped in via main.js).
-    page.locator(f"#row-poi-{poi.uuid}.editing.conflict").wait_for()
+    page.locator(f"{view.editing(poi.uuid)}.conflict").wait_for()
     body = page.content()
     assert "Saved by someone else" in body
-    # User's typed name is still in the form, not "someone-else".
-    name_value = page.locator(f"#row-poi-{poi.uuid} input[name=name]").input_value()
+    name_value = page.locator(f"{view.item(poi.uuid)} input[name=name]").input_value()
     assert name_value == "user-typed"
-    # On-disk row reflects the other save, not the rejected one.
     assert storage.get_point(g.id, poi.uuid).name == "someone-else"

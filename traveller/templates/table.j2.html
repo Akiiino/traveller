@@ -13,23 +13,34 @@
                 <th></th>
             </tr>
         </thead>
-        <tbody hx-target="closest tr" hx-swap="outerHTML">
+        <tbody id="row-list" hx-target="closest tr" hx-swap="outerHTML">
             {% for point in points %}
                 {% include "row.j2.html" %}
             {% endfor %}
         </tbody>
     </table>
+    {# The Add button lives inside each layout so its hx-target resolves
+       to the visible list. A single shared button used to silently
+       append to the hidden desktop tbody when clicked on mobile. The
+       list-id prefix (`row-` vs `card-`) is also what `_is_card_request`
+       reads off `HX-Target` to pick the right edit-form template. #}
+    <button class="btn btn-primary add-poi-btn"
+            hx-post="{{ url_for('views.new_point', guide_id=guide_id) }}"
+            hx-target="#row-list"
+            hx-swap="beforeend">Add Point</button>
 </div>
 <!-- Mobile Card View -->
 <div class="mobile-view">
-    <div class="poi-cards" hx-target="closest .poi-card" hx-swap="outerHTML">
+    <div id="card-list"
+         class="poi-cards"
+         hx-target="closest .poi-card"
+         hx-swap="outerHTML">
         {% for point in points %}
             {% include "card.j2.html" %}
         {% endfor %}
     </div>
+    <button class="btn btn-primary add-poi-btn"
+            hx-post="{{ url_for('views.new_point', guide_id=guide_id) }}"
+            hx-target="#card-list"
+            hx-swap="beforeend">Add Point</button>
 </div>
-<!-- Add new POI button - works for both views -->
-<button class="btn btn-primary add-poi-btn"
-        hx-post="{{ url_for('views.new_point', guide_id=guide_id) }}"
-        hx-target=".desktop-view tbody, .mobile-view .poi-cards"
-        hx-swap="beforeend">Add Point</button>
