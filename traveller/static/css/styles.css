@@ -365,6 +365,9 @@ tr.highlight-element,
     position: sticky;
     top: 20px;
     align-self: flex-start;
+    /* Override the inline `display: none` the mobile tab-switch JS may
+       have set, otherwise the map stays hidden after resizing wide. */
+    display: block !important;
   }
 
   #table-container {

@@ -5,10 +5,6 @@ session. Items higher in each tier are higher impact-per-effort. None of
 these is urgent — the app is working and tested.
 
 ## Bugfixes
-- When a desktop browser window is narrow enough, mobile UI shows up; if the
-  "List view" is enabled and the browser window expanded again, the map disappears
-  and can't be made visible through the desktop UI.
-
 - On desktop, if any of the description fields contain a long string that can't
   be broken into multiple lines (e.g. a URL), the table gets wide and the map gets
   unusably narrow.
@@ -103,7 +99,11 @@ these is urgent — the app is working and tested.
 
 - **Consolidate mobile and desktop UI.** As it is, the UI is quite different —
   some differences make sense for UX, but button names, UI style, etc. should
-  be consistent.
+  be consistent. Part of this: mobile tab-switching uses inline `style.display`
+  in JS, which means the desktop layout has to `!important`-override it per
+  pane to recover from a resize. Class-based visibility (e.g. a `.hidden-mobile`
+  class toggled via `classList`) would let CSS own the breakpoint logic and
+  drop the overrides.
 
 - **Live GPS.** Show the current location on the map; helpful for using
   the app on the go without going through the GPX export.
