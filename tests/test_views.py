@@ -148,10 +148,13 @@ def test_put_point_accepts_mailto_link(client, storage):
     assert storage.get_point(g.id, poi.uuid).link == "mailto:hi@example.com"
 
 
-def test_put_point_with_garbage_coords_clears_them(client, storage):
+def test_put_point_with_garbage_coords_returns_400_with_user_input(client, storage):
+    # Bad coordinates used to silently coerce to NULL on the on-disk row;
+    # now they 400 and echo the typed string back with a field-error
+    # highlight so the user can fix the typo. The on-disk row is untouched.
     g = storage.create_guide(name="X")
     poi = storage.create_point(g.id, POI(name="p", latitude=1.0, longitude=2.0))
-    client.put(
+    r = client.put(
         f"/guide/{g.id}/point/{poi.uuid}",
         data={
             "name": "n",
@@ -163,6 +166,84 @@ def test_put_point_with_garbage_coords_clears_them(client, storage):
             "modified_at": poi.modified_at.isoformat(),
         },
     )
+    assert r.status_code == 400
+    body = r.get_data(as_text=True)
+    assert "not a coord" in body
+    assert "field-error" in body
+    saved = storage.get_point(g.id, poi.uuid)
+    assert saved.latitude == 1.0 and saved.longitude == 2.0
+    # modified_at should be unchanged (no write happened).
+    assert saved.modified_at == poi.modified_at
+
+
+def test_put_point_with_garbage_timestamp_returns_400_with_user_input(client, storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    r = client.put(
+        f"/guide/{g.id}/point/{poi.uuid}",
+        data={
+            "name": "n",
+            "description": "",
+            "coordinates": "",
+            "link": "",
+            "category": "",
+            "timestamp": "not a date",
+            "modified_at": poi.modified_at.isoformat(),
+        },
+    )
+    assert r.status_code == 400
+    body = r.get_data(as_text=True)
+    assert "not a date" in body
+    assert "field-error" in body
+    saved = storage.get_point(g.id, poi.uuid)
+    assert saved.timestamp is None
+    assert saved.name == "p"  # unchanged — bad request, no write
+
+
+def test_put_point_with_multiple_bad_fields_marks_each(client, storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    r = client.put(
+        f"/guide/{g.id}/point/{poi.uuid}",
+        data={
+            "name": "n",
+            "description": "",
+            "coordinates": "bad",
+            "link": "",
+            "category": "",
+            "timestamp": "also-bad",
+            "modified_at": poi.modified_at.isoformat(),
+        },
+    )
+    assert r.status_code == 400
+    body = r.get_data(as_text=True)
+    # Both raw values echoed back.
+    assert "bad" in body and "also-bad" in body
+    # Both inputs flagged. The mobile and desktop templates differ in markup,
+    # but the field-error class appears on both fields' inputs in each.
+    assert body.count("field-error") >= 2
+
+
+def test_put_point_with_empty_coords_and_timestamp_is_valid(client, storage):
+    # Empty fields are legitimate (clearing) — must not trigger validation.
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(
+        g.id,
+        POI(name="p", latitude=1.0, longitude=2.0),
+    )
+    r = client.put(
+        f"/guide/{g.id}/point/{poi.uuid}",
+        data={
+            "name": "n",
+            "description": "",
+            "coordinates": "",
+            "link": "",
+            "category": "",
+            "timestamp": "",
+            "modified_at": poi.modified_at.isoformat(),
+        },
+    )
+    assert r.status_code == 200
     saved = storage.get_point(g.id, poi.uuid)
     assert saved.latitude is None and saved.longitude is None
 
@@ -232,14 +313,31 @@ def test_desktop_css_forces_map_container_visible(client):
     assert "display: block !important" in map_block
 
 
-def test_main_js_swaps_on_409(client):
-    # htmx 1.x ignores 4xx by default, which silently drops the conflict-form
-    # response server-side already builds. main.js must opt 409 in to swap.
-    # Without this handler the UI gives no feedback on a stale-edit save.
+def test_main_js_swaps_on_409_and_400(client):
+    # htmx 1.x ignores 4xx by default, which silently drops the edit-form
+    # response the server already builds for conflict (409) and per-field
+    # validation (400). main.js must opt both in to swap, otherwise the
+    # UI gives no feedback on a stale-edit or invalid save.
     body = client.get("/static/js/main.js").get_data(as_text=True)
     assert "htmx:beforeSwap" in body
     assert "409" in body
+    assert "400" in body
     assert "shouldSwap" in body
+
+
+def test_main_js_client_side_validates_edit_form(client):
+    # The edit "form" is not wrapped in <form>, so htmx skips HTML5
+    # validation. Without an explicit client-side pass, a partially-filled
+    # datetime-local input submits "" and silently clears the on-disk
+    # timestamp (the server can't tell "cleared" from "partial"). main.js
+    # must call checkValidity() on the .editing inputs before letting
+    # the request go through. Brittle substring check, but it's what
+    # we have without a real JS harness.
+    body = client.get("/static/js/main.js").get_data(as_text=True)
+    assert "htmx:beforeRequest" in body
+    assert ".editing" in body
+    assert "checkValidity" in body
+    assert "preventDefault" in body
 
 
 def test_put_point_404s_for_missing_uuid(client, storage):

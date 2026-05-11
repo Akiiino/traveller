@@ -1,11 +1,42 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // htmx 1.x ignores 4xx responses by default. The conflict path (409) returns
-  // a rendered edit form populated with the user's typed values + a conflict
-  // banner — we want it swapped in just like a 200 would be.
+  // htmx 1.x ignores 4xx responses by default. Both the conflict path (409)
+  // and the per-field validation path (400) return a rendered edit form
+  // populated with the user's typed values — we want it swapped in just
+  // like a 200 would be.
   document.body.addEventListener("htmx:beforeSwap", function (event) {
-    if (event.detail.xhr.status === 409) {
+    const status = event.detail.xhr.status;
+    if (status === 409 || status === 400) {
       event.detail.shouldSwap = true;
       event.detail.isError = false;
+    }
+  });
+
+  // Client-side HTML5 validation for the edit form. The edit "form" is not
+  // wrapped in a <form> element (the desktop layout is a <tr>), so htmx
+  // skips the normal validation pass. Without this, a partially-filled
+  // datetime-local input submits an empty string and silently clears the
+  // on-disk timestamp; a malformed coordinate trips the `pattern` attribute
+  // but is also submitted anyway. Server-side validation catches non-empty
+  // bad input, but can't tell "user cleared the field" from "browser
+  // dropped a partial value" — only the browser knows.
+  document.body.addEventListener("htmx:beforeRequest", function (event) {
+    if (event.detail.requestConfig.verb === "get") return;
+    const trigger = event.detail.elt;
+    const container = trigger && trigger.closest(".editing");
+    if (!container) return;
+
+    let firstInvalid = null;
+    container.querySelectorAll("input, textarea, select").forEach((input) => {
+      if (input.checkValidity()) {
+        input.classList.remove("field-error");
+      } else {
+        input.classList.add("field-error");
+        if (firstInvalid === null) firstInvalid = input;
+      }
+    });
+    if (firstInvalid) {
+      firstInvalid.reportValidity();
+      event.preventDefault();
     }
   });
 

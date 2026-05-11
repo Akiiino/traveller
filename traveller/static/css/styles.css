@@ -223,6 +223,20 @@ body {
   font-size: 13px;
 }
 
+/* Per-field validation feedback for the edit form. Applied when a value
+   like coordinates or timestamp was submitted but couldn't be parsed —
+   highlights the bad input and shows a hint below it. */
+.field-error {
+  border: 1px solid #d9534f !important;
+  background-color: rgba(217, 83, 79, 0.06);
+}
+
+.field-error-msg {
+  color: #842029;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
 .form-group label {
   font-weight: 500;
   margin-bottom: 5px;
