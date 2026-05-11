@@ -206,6 +206,21 @@ def test_put_point_conflict_returns_409_with_user_input(client, storage):
     assert storage.get_point(g.id, poi.uuid).name == "first"
 
 
+def test_desktop_css_allows_table_to_shrink(client):
+    # A long unbreakable string (e.g. a URL) in a description used to blow
+    # the desktop table out, squeezing the map. Two rules are needed:
+    # `min-width: 0` on the flex item so it can shrink below its content,
+    # and `overflow-wrap: anywhere` on the cell so the long token counts
+    # as breakable when computing min-content. `break-word` is not enough.
+    body = client.get("/static/css/styles.css").get_data(as_text=True)
+    desktop = body.split("@media (min-width: 992px)", 1)[1]
+    table_block = desktop.split("#table-container", 1)[1].split("}", 1)[0]
+    assert "min-width: 0" in table_block
+
+    desc_block = body.split(".description-cell", 1)[1].split("}", 1)[0]
+    assert "overflow-wrap: anywhere" in desc_block
+
+
 def test_desktop_css_forces_map_container_visible(client):
     # The mobile tab-switch JS writes inline `display: none` onto the
     # inactive container. The desktop layout must `!important`-override
