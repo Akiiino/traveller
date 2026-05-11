@@ -206,6 +206,16 @@ def test_put_point_conflict_returns_409_with_user_input(client, storage):
     assert storage.get_point(g.id, poi.uuid).name == "first"
 
 
+def test_main_js_swaps_on_409(client):
+    # htmx 1.x ignores 4xx by default, which silently drops the conflict-form
+    # response server-side already builds. main.js must opt 409 in to swap.
+    # Without this handler the UI gives no feedback on a stale-edit save.
+    body = client.get("/static/js/main.js").get_data(as_text=True)
+    assert "htmx:beforeSwap" in body
+    assert "409" in body
+    assert "shouldSwap" in body
+
+
 def test_put_point_404s_for_missing_uuid(client, storage):
     g = storage.create_guide(name="X")
     r = client.put(

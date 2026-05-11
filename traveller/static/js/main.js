@@ -1,4 +1,14 @@
 document.addEventListener("DOMContentLoaded", function () {
+  // htmx 1.x ignores 4xx responses by default. The conflict path (409) returns
+  // a rendered edit form populated with the user's typed values + a conflict
+  // banner — we want it swapped in just like a 200 would be.
+  document.body.addEventListener("htmx:beforeSwap", function (event) {
+    if (event.detail.xhr.status === 409) {
+      event.detail.shouldSwap = true;
+      event.detail.isError = false;
+    }
+  });
+
   const savedTab = localStorage.getItem("selectedTab");
   const guideId = document.body.dataset.guideId;
   if (!guideId) {
