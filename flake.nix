@@ -151,7 +151,7 @@
         FONTCONFIG_PATH = "${pkgs.fontconfig.out}/etc/fonts";
         FONTCONFIG_FILE = "${pkgs.fontconfig.out}/etc/fonts/fonts.conf";
         TRAVELLER_HTMX_JS = "${htmxJs pkgs}";
-      } "pytest -p no:cacheprovider";
+      } "pytest -p no:cacheprovider --browser chromium --browser firefox";
       treefmt = runOnSrc "treefmt-check" [(treefmtFor pkgs)] {} "treefmt --ci --no-cache";
       djlint = runOnSrc "djlint-check" [pkgs.djlint] {} "djlint --check --lint traveller/templates";
     });
