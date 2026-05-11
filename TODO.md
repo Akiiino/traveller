@@ -90,12 +90,6 @@ these is urgent — the app is working and tested.
 
 ## Larger scope / long-shot
 
-- **Real JS testing.** Today's only JS regression test greps `main.js`
-  for substrings via the Flask test client — brittle and can't catch
-  behavioral bugs (the conflict-swap bug would have passed). A small
-  Playwright or jsdom harness would let us exercise htmx flows
-  end-to-end.
-
 - **Consolidate mobile and desktop UI.** As it is, the UI is quite different —
   some differences make sense for UX, but button names, UI style, etc. should
   be consistent. Part of this: mobile tab-switching uses inline `style.display`

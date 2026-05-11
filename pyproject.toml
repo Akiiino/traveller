@@ -21,9 +21,11 @@ dev = [
     "jupyterlab",
     "watchdog",
     "pytest",
+    "pytest-playwright",
 ]
 test = [
     "pytest",
+    "pytest-playwright",
 ]
 
 [project.scripts]

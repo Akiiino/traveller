@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
 
 import pytest
+from werkzeug.serving import make_server
 
 
 @pytest.fixture
@@ -35,3 +37,24 @@ def client(app):
 @pytest.fixture
 def storage(app):
     return app.config["storage"]
+
+
+@pytest.fixture
+def live_server(app):
+    """Run the Flask app on a real socket for browser-driven e2e tests.
+
+    Yields the base URL. The Flask test client (used by the rest of the
+    suite) bypasses the network entirely; Playwright needs an actual
+    listening port to drive Chromium against.
+    """
+    # threaded=True so the browser can fetch HTML + multiple static
+    # assets in parallel without serializing on a single worker.
+    server = make_server("127.0.0.1", 0, app, threaded=True)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)

@@ -44,6 +44,17 @@
       settings.formatter.black.options = ["--target-version=py310"];
     };
     treefmtFor = pkgs: (treefmt-nix.lib.evalModule pkgs treefmtConfig).config.build.wrapper;
+
+    # htmx vendored as a fixed-output derivation. The e2e tests run in a
+    # network-less Nix sandbox; without a local copy htmx never loads and
+    # nothing swaps. Pin to the exact version + integrity the template
+    # references so we're testing the same code prod runs.
+    htmxJs = pkgs:
+      pkgs.fetchurl {
+        name = "htmx-1.9.5.min.js";
+        url = "https://unpkg.com/htmx.org@1.9.5";
+        sha256 = "0hnhsmhl59w7g8ivi76xw519p7abwzqjgcx3ps48zgz33izqiabn";
+      };
   in {
     packages = forAllSystems (pkgs: let
       python = pkgs.python3;
@@ -66,6 +77,12 @@
     in {
       default = pkgs.mkShell {
         name = "traveller";
+        # Pin Playwright's browser binaries to the Nix store so neither
+        # the devshell nor `nix flake check` ever fetches them at runtime.
+        PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
+        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
+        # See `htmxJs` above — e2e tests use this to stub the CDN.
+        TRAVELLER_HTMX_JS = htmxJs pkgs;
         packages = [
           pkgs.git
           pkgs.coreutils
@@ -109,8 +126,8 @@
         inherit python;
         extras = ["test"];
       });
-      runOnSrc = name: nativeBuildInputs: script:
-        pkgs.runCommand name {inherit nativeBuildInputs;} ''
+      runOnSrc = name: nativeBuildInputs: env: script:
+        pkgs.runCommand name ({inherit nativeBuildInputs;} // env) ''
           cp -r --no-preserve=mode ${./.} ./src
           cd ./src
           export HOME=$TMPDIR
@@ -118,9 +135,25 @@
           touch $out
         '';
     in {
-      pytest = runOnSrc "pytest-check" [testEnv] "pytest -p no:cacheprovider";
-      treefmt = runOnSrc "treefmt-check" [(treefmtFor pkgs)] "treefmt --ci --no-cache";
-      djlint = runOnSrc "djlint-check" [pkgs.djlint] "djlint --check --lint traveller/templates";
+      # pytest sees the e2e tests, so it needs Playwright's browsers
+      # available offline and the sandbox-friendly env vars set.
+      #
+      # The Chromium quirks below are load-bearing: Playwright 1.49+
+      # uses chromium-headless-shell by default, which on NixOS ships
+      # without fontconfig wiring and SIGTRAPs during font rendering
+      # the moment a page paints (nixpkgs #481895). We point
+      # FONTCONFIG_{PATH,FILE} at the real fontconfig so the shell can
+      # render text without crashing.
+      pytest = runOnSrc "pytest-check" [testEnv pkgs.fontconfig] {
+        PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
+        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
+        PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
+        FONTCONFIG_PATH = "${pkgs.fontconfig.out}/etc/fonts";
+        FONTCONFIG_FILE = "${pkgs.fontconfig.out}/etc/fonts/fonts.conf";
+        TRAVELLER_HTMX_JS = "${htmxJs pkgs}";
+      } "pytest -p no:cacheprovider";
+      treefmt = runOnSrc "treefmt-check" [(treefmtFor pkgs)] {} "treefmt --ci --no-cache";
+      djlint = runOnSrc "djlint-check" [pkgs.djlint] {} "djlint --check --lint traveller/templates";
     });
 
     nixosModules.default = {
