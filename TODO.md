@@ -5,9 +5,6 @@ session. Items higher in each tier are higher impact-per-effort. None of
 these is urgent — the app is working and tested.
 
 ## Bugfixes
-- Conflict resoltion is not working — error 409 is visible in the console, but
-  the UI does not react, giving no feedback and making it impossible to save changes.
-
 - When a desktop browser window is narrow enough, mobile UI shows up; if the
   "List view" is enabled and the browser window expanded again, the map disappears
   and can't be made visible through the desktop UI.
@@ -40,7 +37,18 @@ these is urgent — the app is working and tested.
   Map *tiles* are the harder part — leave for a separate effort
   (mbtiles + leaflet-tilelayer-mbtiles is the proper answer).
 
+- **Surface unexpected htmx errors.** With 409 now opting in to a normal
+  swap, other 4xx/5xx still fail silently — same UX failure mode as the
+  conflict bug. A small toast on `htmx:responseError` would catch future
+  bugs faster instead of letting them die in the console.
+
 ## Medium
+
+- **Better conflict UX.** The banner tells the user to "save again to
+  overwrite" but gives no view of what the *other* version contained, so
+  they're discarding someone else's save blind. A small inline diff or
+  preview of the on-disk version next to their typed values would let
+  them make an informed decision (or copy bits across).
 
 - **Per-guide category management UI.** Schema + storage already support
   it; today every new guide gets the same default 7 categories with no
@@ -86,6 +94,12 @@ these is urgent — the app is working and tested.
 - **Remove hover-to-focus.** Add a "Show on map" button like in the mobile UI instead.
 
 ## Larger scope / long-shot
+
+- **Real JS testing.** Today's only JS regression test greps `main.js`
+  for substrings via the Flask test client — brittle and can't catch
+  behavioral bugs (the conflict-swap bug would have passed). A small
+  Playwright or jsdom harness would let us exercise htmx flows
+  end-to-end.
 
 - **Consolidate mobile and desktop UI.** As it is, the UI is quite different —
   some differences make sense for UX, but button names, UI style, etc. should
