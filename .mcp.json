@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "nix",
+      "args": [
+        "run",
+        "nixpkgs#playwright-mcp",
+        "--",
+        "--headless",
+        "--isolated",
+        "--browser=chromium"
+      ]
+    }
+  }
+}
