@@ -18,6 +18,12 @@ def state_dir(tmp_path: Path) -> Path:
 @pytest.fixture
 def app(state_dir: Path, monkeypatch):
     monkeypatch.setenv("STATE_DIRECTORY", str(state_dir))
+    # `create_app` hard-fails without TRAVELLER_VENDOR_DIR. Inside `nix
+    # flake check` the env var is set by the derivation; outside Nix we
+    # fall back to an empty tmp dir so non-e2e tests don't require the
+    # full vendor tree (those tests don't load static assets).
+    if not os.environ.get("TRAVELLER_VENDOR_DIR"):
+        monkeypatch.setenv("TRAVELLER_VENDOR_DIR", str(state_dir))
     # Reload app module so module-level paths pick up the fresh STATE_DIRECTORY.
     import importlib
 
