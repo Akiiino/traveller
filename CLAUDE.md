@@ -77,6 +77,16 @@ If you change the conflict path, run that test.
 - **All checks at once**: `nix flake check` — runs pytest, treefmt --ci, djlint
 - **Run the app locally**: `nix run .` (gunicorn; `STATE_DIRECTORY=$PWD/data` to control state)
 
+## Browser MCP
+
+`.mcp.json` wires up `playwright-mcp` (from nixpkgs) as a project-scoped MCP
+server. When Claude Code launches inside this repo, it can drive a real
+headless Chromium — navigate, click, fill forms, take screenshots,
+inspect accessibility snapshots, read console/network logs. Useful for
+poking at the running app (`nix run .` in another shell) instead of
+writing tests blindly. On first launch, Claude Code prompts you to
+approve the MCP server — say yes.
+
 ## Treefmt + djlint coexistence
 
 Prettier doesn't understand `{{ … }}` inside HTML attributes and would mangle
