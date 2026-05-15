@@ -395,6 +395,11 @@ tr.highlight-element,
        so a single long unbreakable token in the table forces the
        container wider than its 50% share and squeezes the map. */
     min-width: 0;
+    /* The table inside has its own min-content (driven by header text /
+       unbreakable cell content) that ignores the flex item's min-width.
+       Without overflow-x: auto, that intrinsic table width overflows the
+       container and widens the document past the viewport. */
+    overflow-x: auto;
   }
 
   .desktop-view {

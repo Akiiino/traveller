@@ -6,8 +6,6 @@ these is urgent — the app is working and tested.
 
 ## Bugfixes
 
-- The desktop page has a fixed width (that is wider than my screen, for example),
-  requiring horizontal scrolling.
 - When a point is checked and the page is refreshed, the points' order changes,
   but the same checkmarks are checked, causing a desync until the page is hard-
   refreshed (Ctrl+Shift+R).
