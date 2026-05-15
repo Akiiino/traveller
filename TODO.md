@@ -6,7 +6,21 @@ these is urgent — the app is working and tested.
 
 ## Bugfixes
 
-(none currently)
+Low priority (only trusted users have access), but real:
+
+- **XSS in the guide-list delete confirm.** `traveller/templates/index.j2.html:22`
+  interpolates `{{ g.name }}` inside `onsubmit='return confirm("…\"{{ g.name }}\"…");'`.
+  Jinja's HTML-escape isn't enough for a JS string context — `&#34;` decodes to `"`
+  before the JS sees it. Reproduced: a guide named `" + alert("XSS") + "` fires the
+  alert when its Delete button is clicked. Fix: switch to htmx's `hx-confirm` (or
+  `tojson`-wrap the name).
+
+- **Stored XSS in the map popup.** `traveller/static/js/main.js:204` builds
+  the popup with `popupContent.innerHTML = \`<h5>${props.name}…\``. A POI named
+  `<img src=x onerror=…>` fires on page load (innerHTML parses the img before
+  the user even opens a popup). Fix: build the popup as DOM nodes, set
+  `textContent` for name/description/category, set `a.href` on a real anchor
+  element.
 
 ## High value, modest effort
 
@@ -22,10 +36,17 @@ these is urgent — the app is working and tested.
   `/api/guide/<id>/categories` endpoint already exists; just consume it
   from `main.js` and drop the hardcoded map. Stops the two from drifting.
 
-- **`datetime.utcnow()` → `datetime.now(datetime.UTC)`.** Python 3.12+
-  deprecation; pytest output shows ~128 warnings. Affects
-  `traveller/storage.py`, `traveller/gpx.py`, `traveller/models.py`. Pure
-  mechanical replacement.
+- **Export POI `timestamp` to GPX waypoint `<time>`.** Every waypoint
+  already has a date in the UI but `_poi_to_waypoint` never sets
+  `waypoint.time`. GPX consumers currently lose the per-point date.
+  Once per-guide timezone lands (see Medium), this should be emitted
+  with the guide's offset.
+
+- **Show trailing zeros in the coord edit input.** The read-only row
+  uses `%0.4f, %0.4f` but the edit form pre-fills with the raw float
+  (`126.977` instead of `126.9770`). Cosmetic but means "what you typed"
+  drifts from "what's displayed" on round-trip. Pre-format the edit
+  input value the same way.
 
 - **Surface unexpected htmx errors.** With 409 now opting in to a normal
   swap, other 4xx/5xx still fail silently — same UX failure mode as the
@@ -33,6 +54,20 @@ these is urgent — the app is working and tested.
   bugs faster instead of letting them die in the console.
 
 ## Medium
+
+- **Per-guide timezone + TZ-aware datetimes throughout.** Naive datetimes
+  are intentional today (so a 10:00 plan stays 10:00 wherever you travel),
+  but the timezone is implicit. Add a `timezone` field on `Guide` (IANA name,
+  e.g. `Asia/Seoul`), interpret POI `timestamp` and `modified_at` against it,
+  and emit GPX `<time>` with the resolved offset. Subsumes the previous
+  `datetime.utcnow()` → `datetime.now(UTC)` cleanup and silences the
+  Python 3.12 deprecation warnings as a side effect. Schema change — see
+  the "Migrations story" item.
+
+- **Length caps on guide / POI fields.** No limit anywhere today: a
+  5000-character guide name is accepted and ends up inside a `confirm()`
+  modal. Sane caps (e.g. 200 for names, ~10k for descriptions) enforced
+  both server-side and via `maxlength=` on the inputs.
 
 - **Better conflict UX.** The banner tells the user to "save again to
   overwrite" but gives no view of what the *other* version contained, so
