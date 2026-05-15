@@ -6,21 +6,11 @@ these is urgent — the app is working and tested.
 
 ## Bugfixes
 
-Low priority (only trusted users have access), but real:
-
-- **XSS in the guide-list delete confirm.** `traveller/templates/index.j2.html:22`
-  interpolates `{{ g.name }}` inside `onsubmit='return confirm("…\"{{ g.name }}\"…");'`.
-  Jinja's HTML-escape isn't enough for a JS string context — `&#34;` decodes to `"`
-  before the JS sees it. Reproduced: a guide named `" + alert("XSS") + "` fires the
-  alert when its Delete button is clicked. Fix: switch to htmx's `hx-confirm` (or
-  `tojson`-wrap the name).
-
-- **Stored XSS in the map popup.** `traveller/static/js/main.js:204` builds
-  the popup with `popupContent.innerHTML = \`<h5>${props.name}…\``. A POI named
-  `<img src=x onerror=…>` fires on page load (innerHTML parses the img before
-  the user even opens a popup). Fix: build the popup as DOM nodes, set
-  `textContent` for name/description/category, set `a.href` on a real anchor
-  element.
+- The desktop page has a fixed width (that is wider than my screen, for example),
+  requiring horizontal scrolling.
+- When a point is checked and the page is refreshed, the points' order changes,
+  but the same checkmarks are checked, causing a desync until the page is hard-
+  refreshed (Ctrl+Shift+R).
 
 ## High value, modest effort
 
