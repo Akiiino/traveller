@@ -45,16 +45,43 @@
     };
     treefmtFor = pkgs: (treefmt-nix.lib.evalModule pkgs treefmtConfig).config.build.wrapper;
 
-    # htmx vendored as a fixed-output derivation. The e2e tests run in a
-    # network-less Nix sandbox; without a local copy htmx never loads and
-    # nothing swaps. Pin to the exact version + integrity the template
-    # references so we're testing the same code prod runs.
-    htmxJs = pkgs:
-      pkgs.fetchurl {
+    # Frontend dependencies are vendored as fixed-output derivations and
+    # combined into a single tree under vendorAssets. The Flask app
+    # serves this tree at /vendor/... so the page works without any
+    # third-party CDN — required for flaky-network travel use, and a
+    # prerequisite for the e2e tests, which run in a network-less Nix
+    # sandbox.
+    vendorAssets = pkgs: let
+      bootstrapCss = pkgs.fetchurl {
+        name = "bootstrap-5.3.1.min.css";
+        url = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css";
+        sha256 = "1xkfs7g7z5lga4i0j94g87569kfgnkc82rlnqav0j3014wgx4ffr";
+      };
+      leafletDist = pkgs.fetchzip {
+        name = "leaflet-1.9.4";
+        url = "https://registry.npmjs.org/leaflet/-/leaflet-1.9.4.tgz";
+        sha256 = "0llnx6drvmwh4xd46grkpa6c1qmgi6qjzqkzmzz6kc1if0xkadfg";
+      };
+      htmxJs = pkgs.fetchurl {
         name = "htmx-1.9.5.min.js";
         url = "https://unpkg.com/htmx.org@1.9.5";
         sha256 = "0hnhsmhl59w7g8ivi76xw519p7abwzqjgcx3ps48zgz33izqiabn";
       };
+      leafletColorMarkers = pkgs.fetchFromGitHub {
+        owner = "pointhi";
+        repo = "leaflet-color-markers";
+        rev = "234813b7dffa11eee06f41618e1f5752c6b7bd8d";
+        sha256 = "1cfv3gjkk5mi2y9g7w2ngv6xr2vk9ivdcb381mxnxn6vsp7r41wy";
+      };
+    in
+      pkgs.runCommand "traveller-vendor" {} ''
+        mkdir -p $out/bootstrap $out/leaflet $out/marker-icons $out/htmx
+        cp ${bootstrapCss} $out/bootstrap/bootstrap.min.css
+        cp -r ${leafletDist}/dist/. $out/leaflet/
+        cp ${leafletColorMarkers}/img/marker-icon-2x-*.png $out/marker-icons/
+        cp ${leafletDist}/dist/images/marker-shadow.png $out/marker-icons/marker-shadow.png
+        cp ${htmxJs} $out/htmx/htmx.min.js
+      '';
   in {
     packages = forAllSystems (pkgs: let
       python = pkgs.python3;
@@ -81,8 +108,8 @@
         # the devshell nor `nix flake check` ever fetches them at runtime.
         PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
         PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
-        # See `htmxJs` above — e2e tests use this to stub the CDN.
-        TRAVELLER_HTMX_JS = htmxJs pkgs;
+        # Flask serves this directory at /vendor/...; see vendorAssets above.
+        TRAVELLER_VENDOR_DIR = vendorAssets pkgs;
         packages = [
           pkgs.git
           pkgs.coreutils
@@ -150,7 +177,7 @@
         PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
         FONTCONFIG_PATH = "${pkgs.fontconfig.out}/etc/fonts";
         FONTCONFIG_FILE = "${pkgs.fontconfig.out}/etc/fonts/fonts.conf";
-        TRAVELLER_HTMX_JS = "${htmxJs pkgs}";
+        TRAVELLER_VENDOR_DIR = "${vendorAssets pkgs}";
       } "pytest -p no:cacheprovider --browser chromium --browser firefox";
       treefmt = runOnSrc "treefmt-check" [(treefmtFor pkgs)] {} "treefmt --ci --no-cache";
       djlint = runOnSrc "djlint-check" [pkgs.djlint] {} "djlint --check --lint traveller/templates";
@@ -200,6 +227,8 @@
           description = "Traveller travel planning web app";
           wantedBy = ["multi-user.target"];
           after = ["network.target"];
+
+          environment.TRAVELLER_VENDOR_DIR = "${vendorAssets pkgs}";
 
           serviceConfig = {
             ExecStart = lib.escapeShellArgs ([

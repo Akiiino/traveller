@@ -20,7 +20,6 @@ their own file so they can be skipped with ``-k "not e2e"`` when iterating.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -28,7 +27,7 @@ import pytest
 
 from traveller.models import POI
 
-# --- Browser launch + CDN stubbing ------------------------------------------
+# --- Browser launch ---------------------------------------------------------
 
 
 @pytest.fixture(scope="session")
@@ -55,47 +54,6 @@ def _log_console(page, capsys):
         "requestfailed",
         lambda req: print(f"[requestfailed] {req.url} {req.failure}"),
     )
-    yield
-
-
-@pytest.fixture(autouse=True)
-def _stub_cdn(page):
-    """Intercept the CDN assets the templates load.
-
-    The Nix sandbox has no network, so htmx must come from a locally
-    vendored copy (path injected via TRAVELLER_HTMX_JS, fetched as a FOD
-    in flake.nix). Other CDN assets (Bootstrap, Leaflet) are stubbed with
-    empty bodies — the flows we test don't depend on them. Missing
-    Leaflet causes main.js to throw at L.map(...), but only AFTER both
-    htmx event handlers are registered, so the flows we test still work.
-    """
-    htmx_path = os.environ.get("TRAVELLER_HTMX_JS")
-    if htmx_path is None:
-        # Outside Nix: let the real CDN respond.
-        yield
-        return
-    with open(htmx_path, "rb") as f:
-        htmx_body = f.read()
-
-    def handler(route):
-        url = route.request.url
-        if "htmx" in url:
-            route.fulfill(
-                status=200,
-                body=htmx_body,
-                content_type="application/javascript",
-            )
-        elif "127.0.0.1" in url:
-            route.continue_()
-        else:
-            ct = (
-                "text/css"
-                if url.rstrip("/").endswith(".css")
-                else "application/javascript"
-            )
-            route.fulfill(status=200, body=b"", content_type=ct)
-
-    page.route("**/*", handler)
     yield
 
 
@@ -180,17 +138,13 @@ def _open_guide(page, base_url: str, guide_id: int, view: View) -> None:
     """Navigate to the guide page in the given viewport.
 
     On mobile, ``#table-container`` starts hidden and the user reveals it
-    by clicking the List View tab. The tab click-handler lives in main.js
-    AFTER ``L.map(...)`` — which throws here because Leaflet is stubbed —
-    so we can't drive the tab from the test. Force-show the container as
-    a test-only workaround; the production-path coverage for tab-switching
-    is the user's responsibility on a real browser.
+    by clicking the List View tab. Drive the same tab click here so the
+    list is visible before the test interacts with it.
     """
     page.goto(f"{base_url}/guide/{guide_id}")
     if view.is_mobile:
-        page.evaluate(
-            "document.getElementById('table-container').style.display = 'block'"
-        )
+        page.locator('.view-tab[data-target="table-container"]').click()
+        page.locator("#table-container").wait_for(state="visible")
 
 
 def _open_edit(page, base_url: str, view: View, guide_id: int, uuid: str) -> None:

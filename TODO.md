@@ -27,11 +27,6 @@ these is urgent — the app is working and tested.
   `traveller/storage.py`, `traveller/gpx.py`, `traveller/models.py`. Pure
   mechanical replacement.
 
-- **Vendor frontend deps** (Bootstrap, Leaflet, htmx, marker icons).
-  Enables offline use when travelling on flaky SIM.
-  Map *tiles* are the harder part — leave for a separate effort
-  (mbtiles + leaflet-tilelayer-mbtiles is the proper answer).
-
 - **Surface unexpected htmx errors.** With 409 now opting in to a normal
   swap, other 4xx/5xx still fail silently — same UX failure mode as the
   conflict bug. A small toast on `htmx:responseError` would catch future
