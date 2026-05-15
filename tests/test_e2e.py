@@ -351,3 +351,61 @@ def test_e2e_stale_modified_at_shows_conflict_banner(
     name_value = page.locator(f"{view.item(poi.uuid)} input[name=name]").input_value()
     assert name_value == "user-typed"
     assert storage.get_point(g.id, poi.uuid).name == "someone-else"
+
+
+@pytest.mark.only_browser("chromium")
+def test_e2e_popup_xss_blocked(live_server, page, storage, desktop_only):
+    # Regression: a POI name containing HTML used to be injected into
+    # the map popup via innerHTML, so an `<img src=x onerror=…>` payload
+    # fired on page load (innerHTML parses the img before the user even
+    # opens the popup). The fix builds the popup as DOM nodes and uses
+    # textContent for the name/description/category.
+    g = storage.create_guide(name="X")
+    storage.create_point(
+        g.id,
+        POI(
+            name='<img src=x onerror="window.__pwn=true">',
+            latitude=1.0,
+            longitude=2.0,
+        ),
+    )
+    page.add_init_script("window.__pwn = false;")
+    page.goto(f"{live_server}/guide/{g.id}")
+    # Wait for at least one marker to land — confirms loadPOIs() has run
+    # and built the popup, which is when the payload would have fired.
+    page.locator(".leaflet-marker-icon").first.wait_for()
+    assert page.evaluate("window.__pwn") is False
+    # And the name still round-trips literally into the popup heading
+    # when the user does open it.
+    page.locator(".leaflet-marker-icon").first.click()
+    heading = page.locator(".leaflet-popup-content h5")
+    heading.wait_for()
+    assert heading.inner_text() == '<img src=x onerror="window.__pwn=true">'
+
+
+@pytest.mark.only_browser("chromium")
+def test_e2e_delete_confirm_no_xss(live_server, page, storage, desktop_only):
+    # Regression: the guide-list delete confirm used to interpolate the
+    # name into a JS string inside `onsubmit='return confirm("…");'`.
+    # Jinja's HTML escape isn't sufficient in a JS context — &#34; decodes
+    # back to a real `"` before the JS sees it. The fix wraps the name
+    # via the `tojson` filter so it lands as a proper JS string literal.
+    payload = '" + (window.__pwn=true) + "'
+    storage.create_guide(name=payload)
+    page.add_init_script("window.__pwn = false;")
+    # Dismiss the confirm dialog without submitting the form, and record
+    # the message so we can assert the payload appears as literal text.
+    dialog_messages: list[str] = []
+
+    def _on_dialog(d):
+        dialog_messages.append(d.message)
+        d.dismiss()
+
+    page.on("dialog", _on_dialog)
+    page.goto(f"{live_server}/")
+    page.locator("form button.btn-outline-danger").first.click()
+    # The confirm dialog is synchronous; once click() returns, the
+    # onsubmit handler has run to completion. If the payload had been
+    # evaluated as JS, __pwn would now be true.
+    assert page.evaluate("window.__pwn") is False
+    assert dialog_messages and payload in dialog_messages[0]

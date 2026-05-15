@@ -200,25 +200,51 @@ document.addEventListener("DOMContentLoaded", function () {
             icon: createColoredIcon(props.category),
           });
 
+          // Build the popup as DOM nodes with textContent rather than
+          // innerHTML — a POI named `<img src=x onerror=…>` would
+          // otherwise fire on page load, before the user even opens
+          // the popup.
           const popupContent = document.createElement("div");
-          popupContent.innerHTML = `
-            <h5>${props.name || "Unnamed Point"}</h5>
-            <p>${props.description || ""}</p>
-            <p>Category: ${props.category || "None"}</p>
-            ${props.link ? `<p><a href="${props.link}" target="_blank">Link</a></p>` : ""}
-            ${props.timestamp ? `<p>Date: ${new Date(props.timestamp).toLocaleDateString()}</p>` : ""}
-            <div class="text-center mt-2">
-              <button class="btn btn-sm btn-primary jump-to-details" data-id="${props.id}">View Details</button>
-            </div>
-          `;
 
-          // Add event listener to the button
-          popupContent
-            .querySelector(".jump-to-details")
-            .addEventListener("click", function () {
-              const pointId = this.getAttribute("data-id");
-              jumpToDetails(pointId);
-            });
+          const heading = document.createElement("h5");
+          heading.textContent = props.name || "Unnamed Point";
+          popupContent.appendChild(heading);
+
+          const desc = document.createElement("p");
+          desc.textContent = props.description || "";
+          popupContent.appendChild(desc);
+
+          const cat = document.createElement("p");
+          cat.textContent = `Category: ${props.category || "None"}`;
+          popupContent.appendChild(cat);
+
+          if (props.link) {
+            const linkP = document.createElement("p");
+            const a = document.createElement("a");
+            a.href = props.link;
+            a.target = "_blank";
+            a.textContent = "Link";
+            linkP.appendChild(a);
+            popupContent.appendChild(linkP);
+          }
+
+          if (props.timestamp) {
+            const dateP = document.createElement("p");
+            dateP.textContent = `Date: ${new Date(props.timestamp).toLocaleDateString()}`;
+            popupContent.appendChild(dateP);
+          }
+
+          const btnWrap = document.createElement("div");
+          btnWrap.className = "text-center mt-2";
+          const detailsBtn = document.createElement("button");
+          detailsBtn.className = "btn btn-sm btn-primary jump-to-details";
+          detailsBtn.dataset.id = props.id;
+          detailsBtn.textContent = "View Details";
+          detailsBtn.addEventListener("click", function () {
+            jumpToDetails(this.dataset.id);
+          });
+          btnWrap.appendChild(detailsBtn);
+          popupContent.appendChild(btnWrap);
 
           marker.bindPopup(popupContent);
 
