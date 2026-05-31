@@ -1,0 +1,18 @@
+<li class="list-group-item d-flex align-items-center guide-item editing"
+    id="guide-{{ guide.id }}">
+    <input type="hidden" name="guide_id" value="{{ guide.id }}">
+    <input name="name"
+           class="form-control form-control-sm me-2"
+           value="{{ guide.name }}"
+           required
+           autofocus>
+    <button class="btn btn-sm btn-primary"
+            hx-put="{{ url_for('views.rename_guide', guide_id=guide.id) }}"
+            hx-include="#guide-{{ guide.id }}"
+            hx-target="#guide-{{ guide.id }}"
+            hx-swap="outerHTML">Save</button>
+    <button class="btn btn-sm btn-outline-secondary ms-1"
+            hx-get="{{ url_for('views.guide_row', guide_id=guide.id) }}"
+            hx-target="#guide-{{ guide.id }}"
+            hx-swap="outerHTML">Cancel</button>
+</li>

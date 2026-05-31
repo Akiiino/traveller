@@ -17,7 +17,7 @@ from uuid import uuid4
 
 from traveller.models import POI, Category, Guide
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS guides (
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     link TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
 
@@ -108,7 +109,24 @@ class Storage:
                     "INSERT INTO schema_version (rowid, version) VALUES (1, ?)",
                     (SCHEMA_VERSION,),
                 )
-            # Future migrations: bump SCHEMA_VERSION and add ALTERs here.
+            else:
+                version = row["version"]
+                if version < 2:
+                    conn.execute(
+                        "ALTER TABLE guides "
+                        "ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"
+                    )
+                    guide_rows = conn.execute(
+                        "SELECT id FROM guides ORDER BY name"
+                    ).fetchall()
+                    for i, r in enumerate(guide_rows):
+                        conn.execute(
+                            "UPDATE guides SET sort_order = ? WHERE id = ?",
+                            (i, r["id"]),
+                        )
+                    conn.execute(
+                        "UPDATE schema_version SET version = 2 WHERE rowid = 1"
+                    )
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
@@ -127,27 +145,50 @@ class Storage:
     def list_guides(self) -> list[Guide]:
         with self.connect() as conn:
             rows = conn.execute(
-                "SELECT id, name, description, link FROM guides ORDER BY name"
+                "SELECT id, name, description, link, sort_order "
+                "FROM guides ORDER BY sort_order, name"
             ).fetchall()
         return [Guide(**dict(r)) for r in rows]
 
     def get_guide(self, guide_id: int) -> Guide | None:
         with self.connect() as conn:
             row = conn.execute(
-                "SELECT id, name, description, link FROM guides WHERE id = ?",
+                "SELECT id, name, description, link, sort_order "
+                "FROM guides WHERE id = ?",
                 (guide_id,),
             ).fetchone()
         return Guide(**dict(row)) if row else None
 
     def create_guide(self, name: str, description: str = "", link: str = "") -> Guide:
         with self.connect() as conn:
+            max_order = conn.execute(
+                "SELECT COALESCE(MAX(sort_order), -1) FROM guides"
+            ).fetchone()[0]
+            sort_order = max_order + 1
             cur = conn.execute(
-                "INSERT INTO guides (name, description, link, created_at) "
-                "VALUES (?, ?, ?, ?)",
-                (name, description, link, datetime.utcnow().isoformat()),
+                "INSERT INTO guides (name, description, link, sort_order, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (name, description, link, sort_order, datetime.utcnow().isoformat()),
             )
             gid = cur.lastrowid
-        return Guide(id=gid, name=name, description=description, link=link)
+        return Guide(
+            id=gid, name=name, description=description, link=link, sort_order=sort_order
+        )
+
+    def rename_guide(self, guide_id: int, new_name: str) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE guides SET name = ? WHERE id = ?",
+                (new_name, guide_id),
+            )
+
+    def reorder_guides(self, guide_ids: list[int]) -> None:
+        """Set sort_order for each guide based on position in guide_ids."""
+        with self.connect() as conn:
+            conn.execute("BEGIN")
+            for i, gid in enumerate(guide_ids):
+                conn.execute("UPDATE guides SET sort_order = ? WHERE id = ?", (i, gid))
+            conn.execute("COMMIT")
 
     def delete_guide(self, guide_id: int) -> None:
         with self.connect() as conn:

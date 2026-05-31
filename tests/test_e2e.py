@@ -403,6 +403,7 @@ def test_e2e_delete_confirm_no_xss(live_server, page, storage, desktop_only):
 
     page.on("dialog", _on_dialog)
     page.goto(f"{live_server}/")
+    page.locator("#toggle-edit-mode").click()
     page.locator("form button.btn-outline-danger").first.click()
     # The confirm dialog is synchronous; once click() returns, the
     # onsubmit handler has run to completion. If the payload had been

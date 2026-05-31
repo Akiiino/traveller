@@ -73,14 +73,20 @@
         rev = "234813b7dffa11eee06f41618e1f5752c6b7bd8d";
         sha256 = "1cfv3gjkk5mi2y9g7w2ngv6xr2vk9ivdcb381mxnxn6vsp7r41wy";
       };
+      sortableJs = pkgs.fetchurl {
+        name = "Sortable-1.15.2.min.js";
+        url = "https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js";
+        sha256 = "0vlygq0038z5020ps41pvsivaaadx736fn3kj079dxf40c3l6s6a";
+      };
     in
       pkgs.runCommand "traveller-vendor" {} ''
-        mkdir -p $out/bootstrap $out/leaflet $out/marker-icons $out/htmx
+        mkdir -p $out/bootstrap $out/leaflet $out/marker-icons $out/htmx $out/sortable
         cp ${bootstrapCss} $out/bootstrap/bootstrap.min.css
         cp -r ${leafletDist}/dist/. $out/leaflet/
         cp ${leafletColorMarkers}/img/marker-icon-2x-*.png $out/marker-icons/
         cp ${leafletDist}/dist/images/marker-shadow.png $out/marker-icons/marker-shadow.png
         cp ${htmxJs} $out/htmx/htmx.min.js
+        cp ${sortableJs} $out/sortable/Sortable.min.js
       '';
   in {
     packages = forAllSystems (pkgs: let

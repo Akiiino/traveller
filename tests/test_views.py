@@ -33,6 +33,45 @@ def test_delete_guide_redirects_home(client, storage):
     assert storage.list_guides() == []
 
 
+def test_rename_guide_via_put(client, storage):
+    g = storage.create_guide(name="Old")
+    r = client.put(f"/guide/{g.id}/rename", data={"name": "New"})
+    assert r.status_code == 200
+    assert "New" in r.get_data(as_text=True)
+    assert storage.get_guide(g.id).name == "New"
+
+
+def test_rename_guide_rejects_blank(client, storage):
+    g = storage.create_guide(name="Old")
+    r = client.put(f"/guide/{g.id}/rename", data={"name": "  "})
+    assert r.status_code == 400
+
+
+def test_reorder_guides_via_post(client, storage):
+    g1 = storage.create_guide(name="A")
+    g2 = storage.create_guide(name="B")
+    r = client.post("/guides/reorder", data={"guide_id": [str(g2.id), str(g1.id)]})
+    assert r.status_code == 204
+    guides = storage.list_guides()
+    assert guides[0].id == g2.id
+
+
+def test_guide_edit_name_returns_form(client, storage):
+    g = storage.create_guide(name="X")
+    r = client.get(f"/guide/{g.id}/edit_name")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'name="name"' in body
+    assert g.name in body
+
+
+def test_guide_row_returns_readonly(client, storage):
+    g = storage.create_guide(name="X")
+    r = client.get(f"/guide/{g.id}/row")
+    assert r.status_code == 200
+    assert g.name in r.get_data(as_text=True)
+
+
 def test_guide_page_404s_for_missing(client):
     assert client.get("/guide/9999").status_code == 404
 

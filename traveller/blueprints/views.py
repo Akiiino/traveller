@@ -129,6 +129,39 @@ def delete_guide(guide_id: int):
     return redirect(url_for("views.index"))
 
 
+@views_bp.route("/guide/<int:guide_id>/edit_name", methods=["GET"])
+def guide_edit_name(guide_id: int):
+    g = _storage().get_guide(guide_id)
+    if g is None:
+        abort(404)
+    return render_template("guide_edit_name.j2.html", guide=g)
+
+
+@views_bp.route("/guide/<int:guide_id>/rename", methods=["PUT"])
+def rename_guide(guide_id: int):
+    new_name = request.form.get("name", "").strip()
+    if not new_name:
+        abort(400, "guide name required")
+    _storage().rename_guide(guide_id, new_name)
+    g = _storage().get_guide(guide_id)
+    return render_template("guide_row.j2.html", guide=g)
+
+
+@views_bp.route("/guide/<int:guide_id>/row", methods=["GET"])
+def guide_row(guide_id: int):
+    g = _storage().get_guide(guide_id)
+    if g is None:
+        abort(404)
+    return render_template("guide_row.j2.html", guide=g)
+
+
+@views_bp.route("/guides/reorder", methods=["POST"])
+def reorder_guides():
+    guide_ids = [int(x) for x in request.form.getlist("guide_id")]
+    _storage().reorder_guides(guide_ids)
+    return Response(status=204)
+
+
 @views_bp.route("/guide/<int:guide_id>")
 def guide(guide_id: int):
     g = _storage().get_guide(guide_id)
