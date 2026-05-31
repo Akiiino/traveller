@@ -13,7 +13,7 @@ body {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -379,7 +379,9 @@ tr.highlight-element,
   }
 
   #map-container {
-    flex: 1;
+    /* Narrower than the table column: most space is better spent on the
+       list of points; the map only needs room to be glanceable. */
+    flex: 0 0 40%;
     position: sticky;
     top: 20px;
     align-self: flex-start;
@@ -388,7 +390,15 @@ tr.highlight-element,
     display: block !important;
   }
 
+  #map-container #map {
+    /* Taller map on desktop than on mobile — fills more of the column
+       so the sticky panel doesn't leave empty space below it when the
+       table is longer. */
+    height: 700px;
+  }
+
   #table-container {
+    /* Takes whatever's left after the fixed-width map column. */
     flex: 1;
     display: block !important;
     /* Without min-width: 0, flex items fall back to min-content sizing,
