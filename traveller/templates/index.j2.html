@@ -11,19 +11,21 @@
     </head>
     <body>
         <div class="container">
-            <h1 class="mb-4">Travel Guides</h1>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="mb-0">Travel Guides</h1>
+                {% if guides %}<button class="btn btn-sm btn-outline-secondary" id="toggle-edit-mode">Edit</button>{% endif %}
+            </div>
             {% if guides %}
-                <ul class="list-group mb-4">
+                <ul class="list-group mb-4"
+                    id="guide-list"
+                    hx-post="{{ url_for('views.reorder_guides') }}"
+                    hx-trigger="end"
+                    hx-swap="none"
+                    hx-include="#guide-list">
                     {% for g in guides %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <a href="{{ url_for('views.guide', guide_id=g.id) }}">{{ g.name }}</a>
-                            <form action="{{ url_for('views.delete_guide', guide_id=g.id) }}"
-                                  method="post"
-                                  onsubmit='return confirm("Delete guide " + {{ g.name | tojson }} + " and all its points?");'
-                                  class="m-0">
-                                <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
-                            </form>
-                        </li>
+                        {% with guide=g %}
+                            {% include "guide_row.j2.html" %}
+                        {% endwith %}
                     {% endfor %}
                 </ul>
             {% else %}
@@ -39,5 +41,8 @@
                 <button class="btn btn-primary" type="submit">Create</button>
             </form>
         </div>
+        <script src="{{ url_for('vendor.static', filename='htmx/htmx.min.js') }}"></script>
+        <script src="{{ url_for('vendor.static', filename='sortable/Sortable.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/index.js') }}"></script>
     </body>
 </html>

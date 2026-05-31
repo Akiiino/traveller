@@ -318,6 +318,23 @@ tr.highlight-element,
   min-width: 150px;
 }
 
+/* Guide list edit mode */
+.drag-handle {
+  cursor: grab;
+  font-size: 1.2em;
+  color: #6c757d;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.guide-item.sortable-ghost {
+  opacity: 0.4;
+  background-color: #f0f8ff;
+}
+
 @media (max-width: 991px) {
   .view-tabs {
     display: flex;

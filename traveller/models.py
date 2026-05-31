@@ -11,6 +11,7 @@ class Guide:
     name: str
     description: str = ""
     link: str = ""
+    sort_order: int = 0
 
 
 @dataclass
