@@ -103,22 +103,10 @@ def test_new_point_must_be_post(client, storage):
     assert storage.list_points(g.id) == []
 
 
-def test_get_point_renders_row_by_default(client, storage):
+def test_get_point_renders_card(client, storage):
     g = storage.create_guide(name="X")
     poi = storage.create_point(g.id, POI(name="p"))
     r = client.get(f"/guide/{g.id}/point/{poi.uuid}")
-    assert r.status_code == 200
-    body = r.get_data(as_text=True)
-    assert f"row-poi-{poi.uuid}" in body
-
-
-def test_get_point_renders_card_when_hx_target_is_card(client, storage):
-    g = storage.create_guide(name="X")
-    poi = storage.create_point(g.id, POI(name="p"))
-    r = client.get(
-        f"/guide/{g.id}/point/{poi.uuid}",
-        headers={"HX-Target": f"card-poi-{poi.uuid}"},
-    )
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert f"card-poi-{poi.uuid}" in body
@@ -129,7 +117,7 @@ def test_get_point_404s_for_missing(client, storage):
     assert client.get(f"/guide/{g.id}/point/no-such").status_code == 404
 
 
-def test_put_point_updates_and_renders_row(client, storage):
+def test_put_point_updates_and_renders_card(client, storage):
     g = storage.create_guide(name="X")
     poi = storage.create_point(g.id, POI(name="orig"))
     r = client.put(
@@ -258,8 +246,7 @@ def test_put_point_with_multiple_bad_fields_marks_each(client, storage):
     body = r.get_data(as_text=True)
     # Both raw values echoed back.
     assert "bad" in body and "also-bad" in body
-    # Both inputs flagged. The mobile and desktop templates differ in markup,
-    # but the field-error class appears on both fields' inputs in each.
+    # Both inputs flagged: the field-error class appears on each bad field.
     assert body.count("field-error") >= 2
 
 
@@ -328,16 +315,17 @@ def test_put_point_conflict_returns_409_with_user_input(client, storage):
 
 def test_desktop_css_allows_table_to_shrink(client):
     # A long unbreakable string (e.g. a URL) in a description used to blow
-    # the desktop table out, squeezing the map. Two rules are needed:
+    # the desktop list column out, squeezing the map. Two rules are needed:
     # `min-width: 0` on the flex item so it can shrink below its content,
-    # and `overflow-wrap: anywhere` on the cell so the long token counts
-    # as breakable when computing min-content. `break-word` is not enough.
+    # and `overflow-wrap: anywhere` on the description so the long token
+    # counts as breakable when computing min-content. `break-word` is not
+    # enough.
     body = client.get("/static/css/styles.css").get_data(as_text=True)
     desktop = body.split("@media (min-width: 992px)", 1)[1]
     table_block = desktop.split("#table-container", 1)[1].split("}", 1)[0]
     assert "min-width: 0" in table_block
 
-    desc_block = body.split(".description-cell", 1)[1].split("}", 1)[0]
+    desc_block = body.split(".poi-description", 1)[1].split("}", 1)[0]
     assert "overflow-wrap: anywhere" in desc_block
 
 

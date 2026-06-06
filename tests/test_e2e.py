@@ -71,26 +71,28 @@ class View:
         return self.layout == "mobile"
 
     def item(self, uuid: str) -> str:
-        """CSS selector for the read-only row/card of POI ``uuid``."""
-        prefix = "card-poi-" if self.is_mobile else "row-poi-"
-        return f"#{prefix}{uuid}"
+        """CSS selector for the read-only card of POI ``uuid``.
+
+        Both viewports now render the same card markup; only the
+        surrounding container differs (two columns wide, two tabs narrow).
+        """
+        return f"#card-poi-{uuid}"
 
     def editing(self, uuid: str) -> str:
-        """CSS selector for the same row/card while it's in edit mode."""
+        """CSS selector for the same card while it's in edit mode."""
         return f"{self.item(uuid)}.editing"
 
     @property
     def container(self) -> str:
-        """The visible-on-this-viewport container that holds POI rows/cards."""
-        return ".mobile-view" if self.is_mobile else ".desktop-view"
+        """The container that holds the POI cards in both layouts."""
+        return "#card-list"
 
     def new_editing(self) -> str:
-        """Selector for *any* item currently in edit mode under the container."""
-        suffix = ".poi-card.editing" if self.is_mobile else "tr.editing"
-        return f"{self.container} {suffix}"
+        """Selector for *any* card currently in edit mode under the container."""
+        return f"{self.container} .poi-card.editing"
 
     def uuid_from_id(self, dom_id: str) -> str:
-        prefix = "card-poi-" if self.is_mobile else "row-poi-"
+        prefix = "card-poi-"
         assert dom_id.startswith(prefix), dom_id
         return dom_id[len(prefix) :]
 
