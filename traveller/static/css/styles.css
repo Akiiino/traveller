@@ -210,6 +210,11 @@ body {
 
 .add-poi-btn {
   margin-top: 10px;
+  /* Override the .btn left/right margin: with width: 100% and
+     box-sizing: border-box, a horizontal margin pushes the button past
+     its column and adds a stray horizontal scrollbar to the card list. */
+  margin-left: 0;
+  margin-right: 0;
   width: 100%;
   padding: 12px;
 }
@@ -343,27 +348,41 @@ tr.highlight-element,
     display: none;
   }
 
+  /* Fill the viewport so only the card list scrolls: the title and map
+     column stay put while the list scrolls inside its own container.
+     Scoped to .guide-view so the shared .container on the index/types
+     pages keeps its normal document-flow height. */
+  .guide-view {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
   .map-table-container {
     flex-direction: row;
+    /* Take the height left under the title; min-height: 0 lets the list
+       child scroll instead of stretching this row. */
+    flex: 1;
+    min-height: 0;
   }
 
   #map-container {
     /* Narrower than the table column: most space is better spent on the
        list of points; the map only needs room to be glanceable. */
     flex: 0 0 40%;
-    position: sticky;
-    top: 20px;
-    align-self: flex-start;
-    /* Override the inline `display: none` the mobile tab-switch JS may
-       have set, otherwise the map stays hidden after resizing wide. */
-    display: block !important;
+    /* Static left column (map + controls + Export) stacked vertically.
+       !important overrides the inline `display: none` the mobile
+       tab-switch JS may have set, otherwise the map stays hidden after
+       resizing wide. */
+    display: flex !important;
+    flex-direction: column;
   }
 
   #map-container #map {
-    /* Taller map on desktop than on mobile — fills more of the column
-       so the sticky panel doesn't leave empty space below it when the
-       table is longer. */
-    height: 700px;
+    /* Fill the available column height instead of a fixed size, so the
+       map + Export button always fit within one viewport. */
+    flex: 1;
+    min-height: 0;
   }
 
   #table-container {
@@ -371,14 +390,13 @@ tr.highlight-element,
     flex: 1;
     display: block !important;
     /* Without min-width: 0, flex items fall back to min-content sizing,
-       so a single long unbreakable token in the table forces the
-       container wider than its 50% share and squeezes the map. */
+       so a single long unbreakable token forces the container wider than
+       its share and squeezes the map. */
     min-width: 0;
-    /* The table inside has its own min-content (driven by header text /
-       unbreakable cell content) that ignores the flex item's min-width.
-       Without overflow-x: auto, that intrinsic table width overflows the
-       container and widens the document past the viewport. */
-    overflow-x: auto;
+    /* The card list is the only thing that scrolls vertically; clamp the
+       cross axis so a stray wide child can't add a horizontal scrollbar. */
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 
