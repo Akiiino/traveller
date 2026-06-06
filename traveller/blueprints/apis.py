@@ -15,6 +15,7 @@ def points_geojson(guide_id: int):
     storage = _storage()
     if storage.get_guide(guide_id) is None:
         abort(404)
+    colors = {c.name: c.color for c in storage.list_categories()}
     features = []
     for poi in storage.list_points(guide_id):
         if not poi.has_coords:
@@ -31,6 +32,7 @@ def points_geojson(guide_id: int):
                     "name": poi.name,
                     "description": poi.description,
                     "category": poi.category,
+                    "color": colors.get(poi.category, ""),
                     "visited": poi.visited,
                     "link": poi.link,
                     "timestamp": (poi.timestamp.isoformat() if poi.timestamp else None),

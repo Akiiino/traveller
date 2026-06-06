@@ -67,12 +67,6 @@
         url = "https://unpkg.com/htmx.org@1.9.5";
         sha256 = "0hnhsmhl59w7g8ivi76xw519p7abwzqjgcx3ps48zgz33izqiabn";
       };
-      leafletColorMarkers = pkgs.fetchFromGitHub {
-        owner = "pointhi";
-        repo = "leaflet-color-markers";
-        rev = "234813b7dffa11eee06f41618e1f5752c6b7bd8d";
-        sha256 = "1cfv3gjkk5mi2y9g7w2ngv6xr2vk9ivdcb381mxnxn6vsp7r41wy";
-      };
       sortableJs = pkgs.fetchurl {
         name = "Sortable-1.15.2.min.js";
         url = "https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js";
@@ -83,7 +77,6 @@
         mkdir -p $out/bootstrap $out/leaflet $out/marker-icons $out/htmx $out/sortable
         cp ${bootstrapCss} $out/bootstrap/bootstrap.min.css
         cp -r ${leafletDist}/dist/. $out/leaflet/
-        cp ${leafletColorMarkers}/img/marker-icon-2x-*.png $out/marker-icons/
         cp ${leafletDist}/dist/images/marker-shadow.png $out/marker-icons/marker-shadow.png
         cp ${htmxJs} $out/htmx/htmx.min.js
         cp ${sortableJs} $out/sortable/Sortable.min.js
