@@ -61,14 +61,17 @@ def _parse_dt(raw: str) -> datetime | None:
         return None
 
 
-def _is_card_request() -> bool:
-    """True if the htmx request originates from the card/mobile view."""
-    return request.headers.get("HX-Target", "").startswith("card-")
+def _category_colors() -> dict[str, str]:
+    return {c.name: c.color for c in _storage().list_categories()}
 
 
 def _render_point(poi: POI, guide_id: int) -> str:
-    template = "card.j2.html" if _is_card_request() else "row.j2.html"
-    return render_template(template, point=poi, guide_id=guide_id)
+    return render_template(
+        "card.j2.html",
+        point=poi,
+        guide_id=guide_id,
+        category_colors=_category_colors(),
+    )
 
 
 def _render_edit(
@@ -81,9 +84,8 @@ def _render_edit(
     status: int = 200,
 ) -> Response:
     categories = _storage().list_categories()
-    template = "mobile_edit.j2.html" if _is_card_request() else "edit_row.j2.html"
     body = render_template(
-        template,
+        "mobile_edit.j2.html",
         point=poi,
         guide_id=guide_id,
         categories=categories,
@@ -238,7 +240,12 @@ def guide(guide_id: int):
     if g is None:
         abort(404)
     points = _storage().list_points(guide_id)
-    return render_template("base.j2.html", guide=g, points=points)
+    return render_template(
+        "base.j2.html",
+        guide=g,
+        points=points,
+        category_colors=_category_colors(),
+    )
 
 
 # --- POI routes ---------------------------------------------------------------

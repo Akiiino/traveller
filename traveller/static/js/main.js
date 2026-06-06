@@ -116,66 +116,24 @@ document.addEventListener("DOMContentLoaded", function () {
   const markerData = {}; // Store marker data for filtering
   const markerGroup = L.featureGroup().addTo(map);
 
-  function attachRowHoverEvents(rowElement, markerId) {
-    if (!rowElement || !markers[markerId]) return;
-
-    rowElement.addEventListener("mouseenter", () => {
-      markers[markerId].setZIndexOffset(1000);
-      markers[markerId].openPopup();
-    });
-
-    rowElement.addEventListener("mouseleave", () => {
-      markers[markerId].setZIndexOffset(0);
-      markers[markerId].closePopup();
-    });
+  function highlightCard(id) {
+    const card = document.querySelector(`.poi-card[data-id="${id}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("highlight-element");
+    setTimeout(() => card.classList.remove("highlight-element"), 2000);
   }
 
   function jumpToDetails(id) {
-    // Check if we're on mobile
-    const isMobile = window.innerWidth < 992;
-
-    if (isMobile) {
-      // On mobile, switch to list view tab first
-      const listTab = document.querySelector(
-        '.view-tab[data-target="table-container"]',
-      );
-
-      // Store reference to the function we'll call after tab switch
-      const findAndHighlightElement = () => {
-        // Mobile view - find card
-        const targetElement = document.querySelector(
-          `.poi-card[data-id="${id}"]`,
-        );
-
-        if (targetElement) {
-          // Scroll the element into view
-          targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
-
-          // Add a highlight effect
-          targetElement.classList.add("highlight-element");
-          setTimeout(() => {
-            targetElement.classList.remove("highlight-element");
-          }, 2000);
-        }
-      };
-
-      // Handle tab switching with a delay to let the DOM update
-      listTab.click();
-      setTimeout(findAndHighlightElement, 300);
+    // On narrow viewports the list lives behind the "List View" tab, so
+    // switch to it first and let the DOM settle before highlighting.
+    if (window.innerWidth < 992) {
+      document
+        .querySelector('.view-tab[data-target="table-container"]')
+        .click();
+      setTimeout(() => highlightCard(id), 300);
     } else {
-      // Desktop view - find table row
-      const targetElement = document.querySelector(`tr[data-id="${id}"]`);
-
-      if (targetElement) {
-        // Scroll the element into view
-        targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
-
-        // Add a highlight effect
-        targetElement.classList.add("highlight-element");
-        setTimeout(() => {
-          targetElement.classList.remove("highlight-element");
-        }, 2000);
-      }
+      highlightCard(id);
     }
   }
   function loadPOIs() {
@@ -262,11 +220,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
           if (shouldShowMarker(props, showVisited, dateFilter)) {
             markerGroup.addLayer(marker);
-          }
-
-          const row = document.querySelector(`tr[data-id="${props.id}"]`);
-          if (row) {
-            attachRowHoverEvents(row, props.id);
           }
         });
 

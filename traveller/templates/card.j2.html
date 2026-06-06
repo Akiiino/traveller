@@ -1,3 +1,4 @@
+{% set color = category_colors.get(point.category) if category_colors else None %}
 <div class="poi-card"
      data-id="{{ point.uuid }}"
      id="card-poi-{{ point.uuid }}">
@@ -11,7 +12,6 @@
         </div>
         <div class="poi-title">
             <h3>{{ point.name or 'Unnamed Point' }}</h3>
-            <span class="category-badge">{{ point.category or 'Uncategorized' }}</span>
         </div>
         <div class="poi-actions-compact">
             <button class="btn-icon btn-edit"
@@ -26,28 +26,17 @@
                     title="Show on Map">🗺️</button>
         </div>
     </div>
-    <div class="poi-preview">
+    <div class="poi-meta">
+        <span class="category-badge"
+              {% if color %}style="color: {{ color }}; border-color: {{ color }}"{% endif %}>{{ point.category or 'Uncategorized' }}</span>
         {% if point.has_coords %}
-            <span class="coordinates-badge">
-                <a href="nmap://place?lat={{ point.latitude }}&lng={{ point.longitude }}&name={{ point.name | urlencode }}&appname=com.example.myapp">
-                    {{ '%0.4f' % point.latitude }}, {{ '%0.4f' % point.longitude }}
-                </a>
-            </span>
+            <a class="meta-link"
+               href="https://www.openstreetmap.org/?mlat={{ point.latitude }}&mlon={{ point.longitude }}&zoom=15">{{ '%0.4f' % point.latitude }}, {{ '%0.4f' % point.longitude }}</a>
         {% endif %}
-        {% if point.timestamp %}
-            <span class="date-badge">{{ point.timestamp.strftime("%b %d, %H:%M") }}</span>
-        {% endif %}
+        {% if point.link %}<a class="meta-link" href="{{ point.link }}" target="_blank">URL</a>{% endif %}
+        {% if point.timestamp %}<span class="meta-date">{{ point.timestamp.strftime("%b %d, %H:%M") }}</span>{% endif %}
     </div>
-    <div class="poi-details">
-        {% if point.description %}
-            <div class="description">
-                <p>{{ (point.description or '') | urlize }}</p>
-            </div>
-        {% endif %}
-        {% if point.link %}
-            <div class="link">
-                <a href="{{ point.link }}" target="_blank" class="link-btn">Visit Link</a>
-            </div>
-        {% endif %}
-    </div>
+    {% if point.description %}
+        <div class="poi-description">{{ (point.description or '') | urlize }}</div>
+    {% endif %}
 </div>

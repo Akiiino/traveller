@@ -122,87 +122,46 @@ body {
 
 .category-badge {
   display: inline-block;
-  background: #e9ecef;
-  padding: 3px 8px;
+  padding: 2px 8px;
+  border: 1px solid #adb5bd;
   border-radius: 12px;
   font-size: 12px;
-  color: #495057;
-  margin-top: 5px;
-}
-
-.poi-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.coordinates-badge,
-.date-badge {
-  font-size: 12px;
-  background: #f8f9fa;
-  padding: 3px 8px;
-  border-radius: 12px;
+  font-weight: 500;
   color: #6c757d;
 }
 
-.poi-details {
-  padding-top: 10px;
-}
-
-.description {
-  margin-bottom: 10px;
-}
-
-.poi-actions {
+/* Line 2 of a card: type · location · URL · date, all inline. */
+.poi-meta {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 
-.link-btn {
-  display: inline-block;
-  padding: 4px 8px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
+.meta-link {
   color: #0d6efd;
   text-decoration: none;
-  font-size: 14px;
 }
 
-.btn-toggle-details .hide-details-text {
-  display: none;
+.meta-link:hover {
+  text-decoration: underline;
 }
 
-.poi-details:not(.collapsed)
-  + .poi-actions
-  .btn-toggle-details
-  .show-details-text {
-  display: none;
+.meta-date {
+  color: #6c757d;
 }
 
-.poi-details:not(.collapsed)
-  + .poi-actions
-  .btn-toggle-details
-  .hide-details-text {
-  display: inline;
+.poi-description {
+  white-space: pre-wrap;
+  /* `anywhere` keeps a long URL from forcing the card wider than its
+     column and squeezing the desktop map. */
+  overflow-wrap: anywhere;
 }
 
 .edit-form {
   width: 100%;
-}
-
-.full-width {
-  width: 100%;
-}
-
-.description-cell {
-  white-space: pre-wrap;
-  /* `anywhere` (vs `break-word`) is the one that counts toward min-content
-     sizing, which is what tables and flex items use to decide their min
-     width. Without it, a long URL in a description blows the table out
-     and squeezes the desktop map to nothing. */
-  overflow-wrap: anywhere;
 }
 
 /* Conflict styling: shown when a save was rejected because the row was
@@ -364,13 +323,6 @@ tr.highlight-element,
     height: 100%;
   }
 
-  .mobile-view {
-    display: block;
-  }
-  .desktop-view {
-    display: none;
-  }
-
   /* Mobile date filter styles */
   .date-filter-container {
     flex-direction: column;
@@ -427,13 +379,6 @@ tr.highlight-element,
        Without overflow-x: auto, that intrinsic table width overflows the
        container and widens the document past the viewport. */
     overflow-x: auto;
-  }
-
-  .desktop-view {
-    display: block;
-  }
-  .mobile-view {
-    display: none;
   }
 }
 
