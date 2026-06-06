@@ -337,7 +337,7 @@ def test_desktop_css_forces_map_container_visible(client):
     body = client.get("/static/css/styles.css").get_data(as_text=True)
     desktop = body.split("@media (min-width: 992px)", 1)[1]
     map_block = desktop.split("#map-container", 1)[1].split("}", 1)[0]
-    assert "display: block !important" in map_block
+    assert "display: flex !important" in map_block
 
 
 def test_main_js_swaps_on_409_and_400(client):

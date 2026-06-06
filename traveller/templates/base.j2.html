@@ -13,7 +13,7 @@
     </head>
     <body data-guide-id="{{ guide.id }}">
         {% set guide_id = guide.id %}
-        <div class="container">
+        <div class="container guide-view">
             <p class="mb-2">
                 <a href="{{ url_for('views.index') }}">← All guides</a>
             </p>
@@ -35,13 +35,13 @@
                             <label class="form-check-label" for="show-visited">Show Visited</label>
                         </div>
                     </div>
+                    <div class="mt-2">
+                        <form action="{{ url_for('api.export_gpx', guide_id=guide_id) }}">
+                            <input class="btn btn-primary" type="submit" value="Export GPX File" />
+                        </form>
+                    </div>
                 </div>
                 <div id="table-container">{% include "table.j2.html" %}</div>
-            </div>
-            <div class="mt-4">
-                <form action="{{ url_for('api.export_gpx', guide_id=guide_id) }}">
-                    <input class="btn btn-primary" type="submit" value="Export GPX File" />
-                </form>
             </div>
         </div>
         <script src="{{ url_for('vendor.static', filename='leaflet/leaflet.js') }}"></script>

@@ -34,9 +34,9 @@
                href="https://www.openstreetmap.org/?mlat={{ point.latitude }}&mlon={{ point.longitude }}&zoom=15">{{ '%0.4f' % point.latitude }}, {{ '%0.4f' % point.longitude }}</a>
         {% endif %}
         {% if point.link %}<a class="meta-link" href="{{ point.link }}" target="_blank">URL</a>{% endif %}
-        {% if point.timestamp %}<span class="meta-date">{{ point.timestamp.strftime("%b %d, %H:%M") }}</span>{% endif %}
+        {% if point.timestamp %}
+            <span class="meta-date">{{ point.timestamp.strftime("%b %d, %H:%M") }}</span>
+        {% endif %}
     </div>
-    {% if point.description %}
-        <div class="poi-description">{{ (point.description or '') | urlize }}</div>
-    {% endif %}
+    {% if point.description %}<div class="poi-description">{{ (point.description or '') | urlize }}</div>{% endif %}
 </div>
