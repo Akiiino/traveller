@@ -1,0 +1,22 @@
+<div class="alert alert-warning">
+    <p>
+        A type named <strong>{{ new_name }}</strong> already exists. Merge
+        {{ count }} point{{ 's' if count != 1 }} from
+        <strong>{{ old_name }}</strong> into <strong>{{ new_name }}</strong>?
+        The <strong>{{ old_name }}</strong> type will be removed.
+    </p>
+    <input type="hidden" name="name" value="{{ new_name }}" />
+    <input type="hidden" name="color" value="{{ color }}" />
+    <input type="hidden" name="icon" value="{{ icon }}" />
+    <input type="hidden" name="confirm_merge" value="1" />
+    <button class="btn btn-sm btn-warning"
+            hx-put="{{ url_for('views.update_type', name=old_name) }}"
+            hx-include="closest .alert"
+            hx-target="#type-list"
+            hx-swap="innerHTML">Confirm merge</button>
+    <button class="btn btn-sm btn-outline-secondary"
+            hx-get="{{ url_for('views.types') }}"
+            hx-select="#type-list"
+            hx-target="#type-list"
+            hx-swap="outerHTML">Cancel</button>
+</div>

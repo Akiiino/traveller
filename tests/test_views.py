@@ -16,8 +16,8 @@ def test_create_guide_redirects_to_guide_page(client, storage):
     [g] = storage.list_guides()
     assert g.name == "New Trip"
     assert r.headers["Location"].endswith(f"/guide/{g.id}")
-    # Default categories were seeded for the edit form.
-    cats = [c.name for c in storage.list_categories(g.id)]
+    # Types are global (seeded at DB init), not per-guide.
+    cats = [c.name for c in storage.list_categories()]
     assert "Eat" in cats and "See" in cats
 
 

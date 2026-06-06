@@ -13,7 +13,7 @@ from io import TextIOWrapper
 from pathlib import Path
 from zipfile import ZipFile
 
-from traveller.models import POI, Category
+from traveller.models import POI
 from traveller.storage import Storage
 
 
@@ -49,17 +49,14 @@ def import_zip(storage: Storage, zip_path: Path) -> int:
         description=meta.get("description") or "",
         link=meta.get("link") or "",
     )
-    storage.set_categories(
-        guide.id,
-        [
-            Category(
-                name=r["name"],
-                color=r.get("color", "") or "",
-                icon=r.get("icon", "") or "",
-            )
-            for r in cat_rows
-        ],
-    )
+    # Types are global; merge the legacy guide's categories into the shared
+    # set. Names that already exist (e.g. the seeded defaults) are left as-is.
+    for r in cat_rows:
+        storage.add_category(
+            r["name"],
+            r.get("color", "") or "",
+            r.get("icon", "") or "",
+        )
 
     for r in poi_rows:
         lat = _float_or_none(r.get("latitude", ""))

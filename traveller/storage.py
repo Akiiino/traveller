@@ -17,7 +17,18 @@ from uuid import uuid4
 
 from traveller.models import POI, Category, Guide
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+
+# The global set of POI types. Seeded into a brand-new database only.
+DEFAULT_CATEGORIES = [
+    Category(name="See", color="#00842b", icon="special_photo_camera"),
+    Category(name="Sleep", color="#1010a0", icon="tourism_hotel"),
+    Category(name="Do", color="#00842b", icon="special_photo_camera"),
+    Category(name="Drink", color="#d00d0d", icon="restaurants"),
+    Category(name="Go", color="#1010a0", icon="public_transport_stop_position"),
+    Category(name="Eat", color="#d00d0d", icon="restaurants"),
+    Category(name="Buy", color="#a71de1", icon="shop_department_store"),
+]
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -35,12 +46,10 @@ CREATE TABLE IF NOT EXISTS guides (
 );
 
 CREATE TABLE IF NOT EXISTS categories (
-    guide_id INTEGER NOT NULL REFERENCES guides(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
+    name TEXT PRIMARY KEY,
     color TEXT NOT NULL DEFAULT '',
     icon TEXT NOT NULL DEFAULT '',
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (guide_id, name)
+    sort_order INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS points (
@@ -109,6 +118,16 @@ class Storage:
                     "INSERT INTO schema_version (rowid, version) VALUES (1, ?)",
                     (SCHEMA_VERSION,),
                 )
+                # Fresh database: seed the global type set so the POI edit form
+                # has something to pick from.
+                conn.executemany(
+                    "INSERT INTO categories (name, color, icon, sort_order) "
+                    "VALUES (?, ?, ?, ?)",
+                    [
+                        (c.name, c.color, c.icon, i)
+                        for i, c in enumerate(DEFAULT_CATEGORIES)
+                    ],
+                )
             else:
                 version = row["version"]
                 if version < 2:
@@ -126,6 +145,30 @@ class Storage:
                         )
                     conn.execute(
                         "UPDATE schema_version SET version = 2 WHERE rowid = 1"
+                    )
+                if version < 3:
+                    # Collapse the per-guide (guide_id, name) categories table
+                    # into a single global table keyed by name. Duplicate names
+                    # across guides (the default set is identical per guide) are
+                    # deduplicated; points.category is a plain string, so no
+                    # point rows need rewriting.
+                    conn.executescript(
+                        """
+                        CREATE TABLE categories_global (
+                            name TEXT PRIMARY KEY,
+                            color TEXT NOT NULL DEFAULT '',
+                            icon TEXT NOT NULL DEFAULT '',
+                            sort_order INTEGER NOT NULL DEFAULT 0
+                        );
+                        INSERT INTO categories_global (name, color, icon, sort_order)
+                            SELECT name, color, icon, MIN(sort_order)
+                            FROM categories GROUP BY name;
+                        DROP TABLE categories;
+                        ALTER TABLE categories_global RENAME TO categories;
+                        """
+                    )
+                    conn.execute(
+                        "UPDATE schema_version SET version = 3 WHERE rowid = 1"
                     )
 
     @contextmanager
@@ -194,30 +237,78 @@ class Storage:
         with self.connect() as conn:
             conn.execute("DELETE FROM guides WHERE id = ?", (guide_id,))
 
-    # --- Categories -------------------------------------------------------
+    # --- Categories (global POI types) ------------------------------------
 
-    def list_categories(self, guide_id: int) -> list[Category]:
+    def list_categories(self) -> list[Category]:
         with self.connect() as conn:
             rows = conn.execute(
-                "SELECT name, color, icon FROM categories "
-                "WHERE guide_id = ? ORDER BY sort_order, name",
-                (guide_id,),
+                "SELECT name, color, icon FROM categories ORDER BY sort_order, name"
             ).fetchall()
         return [Category(**dict(r)) for r in rows]
 
-    def set_categories(self, guide_id: int, categories: list[Category]) -> None:
+    def category_usage_counts(self) -> dict[str, int]:
+        """Map of category name -> number of POIs using it, across all guides."""
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT category, COUNT(*) AS n FROM points GROUP BY category"
+            ).fetchall()
+        return {r["category"]: r["n"] for r in rows}
+
+    def add_category(self, name: str, color: str = "", icon: str = "") -> bool:
+        """Append a new type. Returns False if the name already exists."""
+        with self.connect() as conn:
+            next_order = conn.execute(
+                "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM categories"
+            ).fetchone()[0]
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO categories (name, color, icon, sort_order) "
+                "VALUES (?, ?, ?, ?)",
+                (name, color, icon, next_order),
+            )
+            return cur.rowcount > 0
+
+    def update_category(self, name: str, color: str, icon: str) -> None:
+        """Update color/icon of an existing type (no rename)."""
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE categories SET color = ?, icon = ? WHERE name = ?",
+                (color, icon, name),
+            )
+
+    def rename_category(self, old: str, new: str) -> None:
+        """Rename a type and rewrite every POI that used it. Precondition: the
+        target name does not already exist (callers use merge_category for that
+        case)."""
         with self.connect() as conn:
             conn.execute("BEGIN")
-            conn.execute("DELETE FROM categories WHERE guide_id = ?", (guide_id,))
-            conn.executemany(
-                "INSERT INTO categories (guide_id, name, color, icon, sort_order) "
-                "VALUES (?, ?, ?, ?, ?)",
-                [
-                    (guide_id, c.name, c.color, c.icon, i)
-                    for i, c in enumerate(categories)
-                ],
+            conn.execute("UPDATE categories SET name = ? WHERE name = ?", (new, old))
+            conn.execute(
+                "UPDATE points SET category = ? WHERE category = ?", (new, old)
             )
             conn.execute("COMMIT")
+
+    def merge_category(self, old: str, into: str) -> None:
+        """Reassign every POI from `old` to the existing type `into`, then drop
+        `old`. Merged POIs adopt `into`'s color/icon."""
+        with self.connect() as conn:
+            conn.execute("BEGIN")
+            conn.execute(
+                "UPDATE points SET category = ? WHERE category = ?", (into, old)
+            )
+            conn.execute("DELETE FROM categories WHERE name = ?", (old,))
+            conn.execute("COMMIT")
+
+    def delete_category(self, name: str) -> bool:
+        """Delete a type, refusing if any POI in any guide still uses it.
+        Returns True on success, False if the type is in use."""
+        with self.connect() as conn:
+            in_use = conn.execute(
+                "SELECT 1 FROM points WHERE category = ? LIMIT 1", (name,)
+            ).fetchone()
+            if in_use is not None:
+                return False
+            conn.execute("DELETE FROM categories WHERE name = ?", (name,))
+            return True
 
     # --- Points -----------------------------------------------------------
 

@@ -46,10 +46,7 @@ def categories(guide_id: int):
     if storage.get_guide(guide_id) is None:
         abort(404)
     return jsonify(
-        {
-            c.name: {"color": c.color, "icon": c.icon}
-            for c in storage.list_categories(guide_id)
-        }
+        {c.name: {"color": c.color, "icon": c.icon} for c in storage.list_categories()}
     )
 
 
@@ -61,7 +58,7 @@ def export_gpx(guide_id: int):
         abort(404)
     xml = guide_to_gpx(
         guide,
-        storage.list_categories(guide_id),
+        storage.list_categories(),
         storage.list_points(guide_id),
     )
     filename = "".join(c if c.isalnum() else "_" for c in guide.name) or "guide"

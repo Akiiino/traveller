@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from traveller.models import POI, Category
+from traveller.models import POI
 from traveller.storage import ConflictError, Storage
 
 
@@ -34,19 +34,64 @@ def test_delete_guide_cascades_points(storage):
     assert storage.list_points(g.id) == []
 
 
-def test_categories_round_trip_preserves_order(storage):
-    g = storage.create_guide(name="X")
-    cats = [Category(name="Z"), Category(name="A"), Category(name="M")]
-    storage.set_categories(g.id, cats)
-    out = storage.list_categories(g.id)
-    assert [c.name for c in out] == ["Z", "A", "M"]
+def test_fresh_db_is_seeded_with_default_types(storage):
+    names = [c.name for c in storage.list_categories()]
+    assert "See" in names and "Eat" in names
 
 
-def test_set_categories_replaces_previous(storage):
+def test_add_category_appends_and_rejects_duplicates(storage):
+    assert storage.add_category("Hike", "#123456", "boot") is True
+    assert [c.name for c in storage.list_categories()][-1] == "Hike"
+    assert storage.add_category("Hike") is False
+
+
+def test_update_category_changes_color_and_icon(storage):
+    storage.add_category("Hike", "#111111", "old")
+    storage.update_category("Hike", "#222222", "new")
+    [c] = [c for c in storage.list_categories() if c.name == "Hike"]
+    assert c.color == "#222222" and c.icon == "new"
+
+
+def test_rename_category_rewrites_points_across_guides(storage):
+    g1 = storage.create_guide(name="A")
+    g2 = storage.create_guide(name="B")
+    storage.create_point(g1.id, POI(name="p1", category="Eat"))
+    storage.create_point(g2.id, POI(name="p2", category="Eat"))
+    storage.rename_category("Eat", "Food")
+    assert "Food" in [c.name for c in storage.list_categories()]
+    assert "Eat" not in [c.name for c in storage.list_categories()]
+    assert storage.list_points(g1.id)[0].category == "Food"
+    assert storage.list_points(g2.id)[0].category == "Food"
+
+
+def test_merge_category_reassigns_points_and_drops_old(storage):
     g = storage.create_guide(name="X")
-    storage.set_categories(g.id, [Category(name="A")])
-    storage.set_categories(g.id, [Category(name="B")])
-    assert [c.name for c in storage.list_categories(g.id)] == ["B"]
+    storage.create_point(g.id, POI(name="p", category="Drink"))
+    storage.merge_category("Drink", "Eat")
+    assert "Drink" not in [c.name for c in storage.list_categories()]
+    assert storage.list_points(g.id)[0].category == "Eat"
+
+
+def test_delete_category_refuses_when_in_use(storage):
+    g = storage.create_guide(name="X")
+    storage.create_point(g.id, POI(name="p", category="Eat"))
+    assert storage.delete_category("Eat") is False
+    assert "Eat" in [c.name for c in storage.list_categories()]
+
+
+def test_delete_category_succeeds_when_unused(storage):
+    storage.add_category("Hike")
+    assert storage.delete_category("Hike") is True
+    assert "Hike" not in [c.name for c in storage.list_categories()]
+
+
+def test_category_usage_counts(storage):
+    g = storage.create_guide(name="X")
+    storage.create_point(g.id, POI(name="a", category="Eat"))
+    storage.create_point(g.id, POI(name="b", category="Eat"))
+    storage.create_point(g.id, POI(name="c", category="See"))
+    counts = storage.category_usage_counts()
+    assert counts.get("Eat") == 2 and counts.get("See") == 1
 
 
 def test_point_round_trip_preserves_types(storage):
