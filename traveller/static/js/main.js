@@ -83,23 +83,27 @@ document.addEventListener("DOMContentLoaded", function () {
     language: "en",
   }).addTo(map);
 
-  // Category to color mapping based on the colors defined in init.py
-  const categoryColors = {
-    See: "green",
-    Sleep: "gold",
-    Do: "orange",
-    Drink: "red",
-    Go: "blue",
-    Eat: "red",
-    Buy: "violet",
-    default: "blue",
-  };
+  // Pins are tinted on the fly from each category's editable hex color
+  // (carried in the GeoJSON feature's `color` property). Falls back to this
+  // default — matching the /types add-form default — when a category has no
+  // color or an unknown/malformed one.
+  const DEFAULT_PIN_COLOR = "#1010a0";
 
-  // Function to create colored icon based on category
-  function createColoredIcon(category) {
-    const color = categoryColors[category] || categoryColors["default"];
+  function pinSvg(color) {
+    return (
+      `<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">` +
+      `<path d="M12.5 0C5.6 0 0 5.6 0 12.5 0 21.5 12.5 41 12.5 41S25 21.5 25 12.5C25 5.6 19.4 0 12.5 0z" ` +
+      `fill="${color}" stroke="#ffffff" stroke-width="1.2"/>` +
+      `<circle cx="12.5" cy="12.5" r="5" fill="#ffffff"/></svg>`
+    );
+  }
+
+  // Function to create a colored icon from a category's hex color
+  function createColoredIcon(color) {
+    const c =
+      color && /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : DEFAULT_PIN_COLOR;
     return new L.Icon({
-      iconUrl: `/vendor/marker-icons/marker-icon-2x-${color}.png`,
+      iconUrl: "data:image/svg+xml," + encodeURIComponent(pinSvg(c)),
       shadowUrl: "/vendor/marker-icons/marker-shadow.png",
       iconSize: [25, 41],
       iconAnchor: [12, 41],
@@ -197,7 +201,7 @@ document.addEventListener("DOMContentLoaded", function () {
           const marker = L.marker(latlng, {
             title: props.name,
             opacity: props.visited ? 0.6 : 1.0,
-            icon: createColoredIcon(props.category),
+            icon: createColoredIcon(props.color),
           });
 
           // Build the popup as DOM nodes with textContent rather than
