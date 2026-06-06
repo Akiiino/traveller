@@ -41,9 +41,7 @@
                    value="{% if 'coordinates' in raw %}{{ raw.coordinates }}{% elif point.has_coords %}{{ point.latitude }}, {{ point.longitude }}{% endif %}"
                    pattern="-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?"
                    title="Enter coordinates as latitude, longitude (e.g., 37.5665, 126.9780)">
-            {% if 'coordinates' in errors %}
-                <div class="field-error-msg">Use "lat, lon" (e.g. 37.5665, 126.9780)</div>
-            {% endif %}
+            {% if 'coordinates' in errors %}<div class="field-error-msg">Use "lat, lon" (e.g. 37.5665, 126.9780)</div>{% endif %}
         </div>
         <div class="form-group mb-2">
             <label for="description">Description</label>
@@ -67,10 +65,8 @@
                    type="datetime-local"
                    name="timestamp"
                    class="form-control {% if 'timestamp' in errors %}field-error{% endif %}"
-                   value="{% if 'timestamp' in raw %}{{ raw.timestamp }}{% elif point.timestamp is not none %}{{ point.timestamp.strftime('%Y-%m-%dT%H:%M') }}{% endif %}" />
-            {% if 'timestamp' in errors %}
-                <div class="field-error-msg">Use YYYY-MM-DDTHH:MM</div>
-            {% endif %}
+                   value="{% if 'timestamp' in raw %}{{ raw.timestamp }}{% elif point.timestamp is not none %}{{ point.timestamp.strftime("%Y-%m-%dT%H:%M") }}{% endif %}" />
+            {% if 'timestamp' in errors %}<div class="field-error-msg">Use YYYY-MM-DDTHH:MM</div>{% endif %}
         </div>
         <div class="form-actions">
             <button class="btn btn-danger"

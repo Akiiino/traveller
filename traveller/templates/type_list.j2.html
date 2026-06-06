@@ -1,0 +1,34 @@
+{% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
+{% for c in categories %}
+    {% set n = usage.get(c.name, 0) %}
+    <div class="type-row d-flex align-items-center gap-2 mb-2">
+        <input type="text"
+               name="name"
+               class="form-control form-control-sm type-name"
+               value="{{ c.name }}"
+               aria-label="Type name" />
+        <input type="color"
+               name="color"
+               class="form-control form-control-color form-control-sm"
+               value="{{ c.color or '#000000' }}"
+               title="Color" />
+        <input type="text"
+               name="icon"
+               class="form-control form-control-sm type-icon"
+               value="{{ c.icon }}"
+               placeholder="icon"
+               aria-label="Icon" />
+        <button class="btn btn-sm btn-primary"
+                hx-put="{{ url_for('views.update_type', name=c.name) }}"
+                hx-include="closest .type-row"
+                hx-target="#type-list"
+                hx-swap="innerHTML">Save</button>
+        <button class="btn btn-sm btn-outline-danger"
+                hx-delete="{{ url_for('views.delete_type', name=c.name) }}"
+                hx-target="#type-list"
+                hx-swap="innerHTML"
+                hx-confirm="Delete type {{ c.name }}?"
+                {% if n %}disabled title="In use by {{ n }} point{{ 's' if n != 1 }}"{% endif %}>Delete</button>
+        {% if n %}<span class="text-muted small">in use by {{ n }}</span>{% endif %}
+    </div>
+{% endfor %}

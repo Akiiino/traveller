@@ -1,4 +1,4 @@
-from traveller.models import POI, Category
+from traveller.models import POI
 
 
 def test_points_geojson_skips_coordless(client, storage):
@@ -21,13 +21,13 @@ def test_points_geojson_404s_for_missing_guide(client):
 
 def test_categories_endpoint(client, storage):
     g = storage.create_guide(name="X")
-    storage.set_categories(
-        g.id,
-        [Category(name="Eat", color="#fff", icon="ic")],
-    )
+    storage.add_category("Hike", "#fff", "ic")
     r = client.get(f"/api/guide/{g.id}/categories")
     assert r.status_code == 200
-    assert r.get_json() == {"Eat": {"color": "#fff", "icon": "ic"}}
+    body = r.get_json()
+    # Endpoint exposes the global type set (defaults + the one we added).
+    assert body["Hike"] == {"color": "#fff", "icon": "ic"}
+    assert "Eat" in body
 
 
 def test_categories_404s_for_missing_guide(client):

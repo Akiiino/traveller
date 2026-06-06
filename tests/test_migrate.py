@@ -43,13 +43,20 @@ def test_maybe_import_renames_zip_after_success(storage, tmp_path):
 
 def test_imported_guide_has_metadata_and_categories(storage, tmp_path):
     zp = tmp_path / "guide.zip"
-    _make_zip(zp)
+    # A novel category ("Hike") plus one that overlaps the seeded defaults.
+    _make_zip(
+        zp,
+        categories="name,color,icon\nEat,#d00d0d,restaurants\nHike,#123456,boot\n",
+    )
     gid = maybe_import(storage, zp)
     g = storage.get_guide(gid)
     assert g.name == "Legacy Trip"
     assert g.description == "old desc"
-    cats = [c.name for c in storage.list_categories(gid)]
-    assert cats == ["Eat", "See"]
+    # Types are global: the import merges into the shared set, adding new
+    # names while leaving existing defaults in place.
+    cats = [c.name for c in storage.list_categories()]
+    assert "Hike" in cats
+    assert "Eat" in cats and "See" in cats
 
 
 def test_zero_zero_sentinel_becomes_null(storage, tmp_path):

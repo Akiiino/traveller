@@ -436,3 +436,17 @@ tr.highlight-element,
     display: none;
   }
 }
+
+/* --- Type (POI category) editor -------------------------------------- */
+
+.type-name {
+  /* Keep the name field compact so the color/icon/buttons stay on one
+     line at typical widths; the names are short words. */
+  max-width: 12rem;
+}
+
+.type-icon {
+  /* Icon identifiers (e.g. special_photo_camera) are longer than names
+     but still don't need the full row width. */
+  max-width: 16rem;
+}

@@ -13,7 +13,11 @@
         <div class="container">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="mb-0">Travel Guides</h1>
-                {% if guides %}<button class="btn btn-sm btn-outline-secondary" id="toggle-edit-mode">Edit</button>{% endif %}
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('views.types') }}"
+                       class="btn btn-sm btn-outline-secondary">Edit types</a>
+                    {% if guides %}<button class="btn btn-sm btn-outline-secondary" id="toggle-edit-mode">Edit</button>{% endif %}
+                </div>
             </div>
             {% if guides %}
                 <ul class="list-group mb-4"

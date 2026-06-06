@@ -12,21 +12,12 @@ from flask import (
     url_for,
 )
 
-from traveller.models import POI, Category
+from traveller.models import POI
 from traveller.storage import ConflictError, Storage
 
 views_bp = Blueprint("views", __name__)
 
 ALLOWED_LINK_SCHEMES = {"http", "https", "mailto"}
-DEFAULT_CATEGORIES = [
-    Category(name="See", color="#00842b", icon="special_photo_camera"),
-    Category(name="Sleep", color="#1010a0", icon="tourism_hotel"),
-    Category(name="Do", color="#00842b", icon="special_photo_camera"),
-    Category(name="Drink", color="#d00d0d", icon="restaurants"),
-    Category(name="Go", color="#1010a0", icon="public_transport_stop_position"),
-    Category(name="Eat", color="#d00d0d", icon="restaurants"),
-    Category(name="Buy", color="#a71de1", icon="shop_department_store"),
-]
 
 
 def _storage() -> Storage:
@@ -89,7 +80,7 @@ def _render_edit(
     raw: dict[str, str] | None = None,
     status: int = 200,
 ) -> Response:
-    categories = _storage().list_categories(guide_id)
+    categories = _storage().list_categories()
     template = "mobile_edit.j2.html" if _is_card_request() else "edit_row.j2.html"
     body = render_template(
         template,
@@ -112,14 +103,93 @@ def index():
     return render_template("index.j2.html", guides=guides)
 
 
+# --- Type (global category) routes --------------------------------------------
+
+
+def _render_type_list(error: str | None = None, status: int = 200) -> Response:
+    storage = _storage()
+    body = render_template(
+        "type_list.j2.html",
+        categories=storage.list_categories(),
+        usage=storage.category_usage_counts(),
+        error=error,
+    )
+    return Response(body, status=status)
+
+
+@views_bp.route("/types", methods=["GET"])
+def types():
+    storage = _storage()
+    return render_template(
+        "types.j2.html",
+        categories=storage.list_categories(),
+        usage=storage.category_usage_counts(),
+        error=None,
+    )
+
+
+@views_bp.route("/types", methods=["POST"])
+def add_type():
+    name = request.form.get("name", "").strip()
+    color = request.form.get("color", "").strip()
+    icon = request.form.get("icon", "").strip()
+    if not name:
+        return _render_type_list(error="Type name is required.")
+    if not _storage().add_category(name, color, icon):
+        return _render_type_list(error=f"A type named {name!r} already exists.")
+    return _render_type_list()
+
+
+@views_bp.route("/types/<name>", methods=["PUT"])
+def update_type(name: str):
+    storage = _storage()
+    existing = {c.name for c in storage.list_categories()}
+    if name not in existing:
+        abort(404)
+    new_name = request.form.get("name", "").strip()
+    color = request.form.get("color", "").strip()
+    icon = request.form.get("icon", "").strip()
+    if not new_name:
+        return _render_type_list(error="Type name is required.")
+
+    if new_name == name:
+        storage.update_category(name, color, icon)
+        return _render_type_list()
+
+    if new_name in existing:
+        if request.form.get("confirm_merge"):
+            storage.merge_category(name, new_name)
+            return _render_type_list()
+        count = storage.category_usage_counts().get(name, 0)
+        body = render_template(
+            "type_merge_confirm.j2.html",
+            old_name=name,
+            new_name=new_name,
+            color=color,
+            icon=icon,
+            count=count,
+        )
+        return Response(body)
+
+    storage.rename_category(name, new_name)
+    return _render_type_list()
+
+
+@views_bp.route("/types/<name>", methods=["DELETE"])
+def delete_type(name: str):
+    if not _storage().delete_category(name):
+        return _render_type_list(
+            error=f"Cannot delete {name!r}: it is still used by some points."
+        )
+    return _render_type_list()
+
+
 @views_bp.route("/guide/new", methods=["POST"])
 def create_guide():
     name = request.form.get("name", "").strip()
     if not name:
         abort(400, "guide name required")
     guide = _storage().create_guide(name=name)
-    # Seed a default category set so the edit form has something to pick from.
-    _storage().set_categories(guide.id, list(DEFAULT_CATEGORIES))
     return redirect(url_for("views.guide", guide_id=guide.id))
 
 
