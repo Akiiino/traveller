@@ -6,35 +6,15 @@ these is urgent — the app is working and tested.
 
 ## Bugfixes
 
-- When a point is checked and the page is refreshed, the points' order changes,
-  but the same checkmarks are checked, causing a desync until the page is hard-
-  refreshed (Ctrl+Shift+R).
+- None yet.
 
 ## High value, modest effort
-
-- **Tighter validation feedback on the edit form.** Bad coordinates / bad
-  timestamps are currently silently dropped (the field reverts to its
-  prior value). Echo the form back with a per-field error class, similar
-  to the conflict path. Same machinery: build an `attempted` POI from
-  `request.form`, render the edit form with an error flag.
-
-- **Feed category colors from the server to JS.** Currently hardcoded in
-  two places: server-side `DEFAULT_CATEGORIES` (in `views.py` or
-  `storage.py`) and `categoryColors` in `static/js/main.js`. The
-  `/api/guide/<id>/categories` endpoint already exists; just consume it
-  from `main.js` and drop the hardcoded map. Stops the two from drifting.
 
 - **Export POI `timestamp` to GPX waypoint `<time>`.** Every waypoint
   already has a date in the UI but `_poi_to_waypoint` never sets
   `waypoint.time`. GPX consumers currently lose the per-point date.
   Once per-guide timezone lands (see Medium), this should be emitted
   with the guide's offset.
-
-- **Show trailing zeros in the coord edit input.** The read-only row
-  uses `%0.4f, %0.4f` but the edit form pre-fills with the raw float
-  (`126.977` instead of `126.9770`). Cosmetic but means "what you typed"
-  drifts from "what's displayed" on round-trip. Pre-format the edit
-  input value the same way.
 
 - **Surface unexpected htmx errors.** With 409 now opting in to a normal
   swap, other 4xx/5xx still fail silently — same UX failure mode as the
@@ -52,29 +32,16 @@ these is urgent — the app is working and tested.
   Python 3.12 deprecation warnings as a side effect. Schema change — see
   the "Migrations story" item.
 
-- **Length caps on guide / POI fields.** No limit anywhere today: a
-  5000-character guide name is accepted and ends up inside a `confirm()`
-  modal. Sane caps (e.g. 200 for names, ~10k for descriptions) enforced
-  both server-side and via `maxlength=` on the inputs.
-
 - **Better conflict UX.** The banner tells the user to "save again to
   overwrite" but gives no view of what the *other* version contained, so
   they're discarding someone else's save blind. A small inline diff or
   preview of the on-disk version next to their typed values would let
   them make an informed decision (or copy bits across).
 
-- **Per-guide category management UI.** Schema + storage already support
-  it; today every new guide gets the same default 7 categories with no
-  way to add/edit/remove from the UI.
-
 - **CSRF tokens on POST endpoints.** Proper fix is `Flask-WTF`'s
   `CSRFProtect`.
 
 ## Low / cosmetic
-
-- **Template consolidation.** Collapse `card.j2.html` and `row.j2.html`
-  into one partial that picks layout via CSS. Would require dropping the
-  `<table>` layout for the desktop view, so non-trivial.
 
 - **`utils.make_element` is barely worth its own module.** Could be
   inlined into `gpx.py` and the file deleted.
@@ -89,32 +56,10 @@ these is urgent — the app is working and tested.
   "export everything" (sqlite dump, or zip-of-GPX, or a JSON
   round-trippable through `migrate.py`) would be a nice safety net.
 
-- **Migrations story.** Schema changes today rely on the importer +
-  manual care. If you start iterating on the SQLite schema, add either
-  Alembic or a tiny `schema_version` table + `if version < N: ALTER …`
-  blocks at startup.
-
-- **Map app selection.**  nmap:// URL schema is hardcoded for Naver Maps.
-  The map URL type should be selectable per-device (and persisted in cookies/local
-  storage) between at least:
-  - the web OpenStreetMaps version (https://www.openstreetmap.org/);
-  - Organic Maps (om:// or geo:);
-  - Google Maps;
-
 - **Zip guide import.** When creating a new guide, it should be possible to
   initialize it with a legacy ZIP file.
 
-- **Remove hover-to-focus.** Add a "Show on map" button like in the mobile UI instead.
-
 ## Larger scope / long-shot
-
-- **Consolidate mobile and desktop UI.** As it is, the UI is quite different —
-  some differences make sense for UX, but button names, UI style, etc. should
-  be consistent. Part of this: mobile tab-switching uses inline `style.display`
-  in JS, which means the desktop layout has to `!important`-override it per
-  pane to recover from a resize. Class-based visibility (e.g. a `.hidden-mobile`
-  class toggled via `classList`) would let CSS own the breakpoint logic and
-  drop the overrides.
 
 - **Live GPS.** Show the current location on the map; helpful for using
   the app on the go without going through the GPX export.
