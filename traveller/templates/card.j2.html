@@ -6,6 +6,7 @@
         <div class="poi-status">
             <input type="checkbox"
                    name="visited"
+                   autocomplete="off"
                    hx-put="{{ url_for('views.toggle_visited', guide_id=guide_id, uuid=point.uuid) }}"
                    hx-swap="none"
                    {{ 'checked' if point.visited else '' }}>
