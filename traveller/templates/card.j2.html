@@ -2,6 +2,7 @@
 <div class="poi-card"
      data-id="{{ point.uuid }}"
      id="card-poi-{{ point.uuid }}">
+    {% if error is defined and error %}<div class="card-error">{{ error }}</div>{% endif %}
     <div class="poi-header">
         <div class="poi-status">
             <input type="checkbox"
@@ -15,6 +16,15 @@
             <h3>{{ point.name or 'Unnamed Point' }}</h3>
         </div>
         <div class="poi-actions-compact">
+            <label class="btn-icon btn-attach" title="Attach file">
+                📎
+                <input type="file"
+                       name="file"
+                       class="visually-hidden"
+                       hx-post="{{ url_for('views.upload_attachment', guide_id=guide_id, uuid=point.uuid) }}"
+                       hx-encoding="multipart/form-data"
+                       hx-indicator="closest .poi-card">
+            </label>
             <button class="btn-icon btn-edit"
                     hx-get="{{ url_for('views.point_edit', guide_id=guide_id, uuid=point.uuid) }}"
                     title="Edit">✏️</button>
@@ -40,4 +50,21 @@
         {% endif %}
     </div>
     {% if point.description %}<div class="poi-description">{{ (point.description or '') | urlize }}</div>{% endif %}
+    {% if point.attachments %}
+        <div class="poi-attachments">
+            {% for a in point.attachments %}
+                <span class="attachment-chip">
+                    <a class="meta-link"
+                       href="{{ url_for('views.attachment', guide_id=guide_id, uuid=point.uuid, attachment_id=a.id) }}"
+                       target="_blank">📎 {{ a.filename }}</a>
+                    <span class="attachment-size">{{ a.size | filesizeformat }}</span>
+                    <button class="btn-icon btn-attachment-delete"
+                            hx-confirm="Remove this attachment?"
+                            hx-delete="{{ url_for('views.attachment', guide_id=guide_id, uuid=point.uuid, attachment_id=a.id) }}"
+                            title="Remove attachment">✕</button>
+                </span>
+            {% endfor %}
+        </div>
+    {% endif %}
+    <div class="upload-indicator htmx-indicator">Uploading…</div>
 </div>

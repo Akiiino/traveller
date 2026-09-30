@@ -228,6 +228,32 @@ def test_smoke_toggle_visited(live_server, page, storage, view):
     raise AssertionError("visited toggle never reached the DB")
 
 
+def test_smoke_attach_file(live_server, page, storage, view, tmp_path):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="with ticket"))
+    ticket = tmp_path / "ticket.pdf"
+    ticket.write_bytes(b"%PDF-1.4 fake ticket")
+
+    _open_guide(page, live_server, g.id, view)
+    # The file input sits visually hidden behind the 📎 label. Setting
+    # files on it fires the change event htmx listens for, so this walks
+    # the same multipart path a real pick from the file chooser does.
+    page.locator(f"{view.item(poi.uuid)} input[type=file]").set_input_files(str(ticket))
+
+    chip = page.locator(f"{view.item(poi.uuid)} .attachment-chip")
+    chip.wait_for(timeout=5000)
+    assert "ticket.pdf" in chip.inner_text()
+    [a] = storage.get_point(g.id, poi.uuid).attachments
+    assert a.filename == "ticket.pdf"
+    assert a.size == len(b"%PDF-1.4 fake ticket")
+
+    # Remove it again via the chip's ✕ (hx-confirm dialog auto-accepted).
+    page.on("dialog", lambda d: d.accept())
+    page.locator(f"{view.item(poi.uuid)} .btn-attachment-delete").click()
+    chip.wait_for(state="detached")
+    assert storage.get_point(g.id, poi.uuid).attachments == []
+
+
 # --- Bug-replay tests (desktop-chromium only) -------------------------------
 #
 # These poke at specific edge cases (HTML5 validation specifics, 409

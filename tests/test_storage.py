@@ -215,3 +215,165 @@ def test_list_points_orders_unvisited_first(storage):
     storage.create_point(g.id, POI(name="unvisited"))
     names = [p.name for p in storage.list_points(g.id)]
     assert names == ["unvisited", "visited"]
+
+
+# --- Attachments ------------------------------------------------------------
+
+
+def _pdf(storage, guide_id, uuid, name="ticket.pdf", data=b"%PDF-1.4 fake"):
+    return storage.add_attachment(
+        guide_id, uuid, filename=name, content_type="application/pdf", data=data
+    )
+
+
+def test_add_and_list_attachments(storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    assert storage.get_point(g.id, poi.uuid).attachments == []
+
+    a = _pdf(storage, g.id, poi.uuid)
+    assert a.id is not None
+    assert a.size == len(b"%PDF-1.4 fake")
+
+    [got] = storage.get_point(g.id, poi.uuid).attachments
+    assert (got.id, got.filename, got.content_type, got.size) == (
+        a.id,
+        "ticket.pdf",
+        "application/pdf",
+        a.size,
+    )
+    # list_points carries the same metadata for every point in the guide.
+    [listed] = storage.list_points(g.id)
+    assert [x.id for x in listed.attachments] == [a.id]
+
+
+def test_attachments_keep_insertion_order(storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    _pdf(storage, g.id, poi.uuid, name="first.pdf")
+    _pdf(storage, g.id, poi.uuid, name="second.pdf")
+    names = [a.filename for a in storage.get_point(g.id, poi.uuid).attachments]
+    assert names == ["first.pdf", "second.pdf"]
+
+
+def test_get_attachment_returns_metadata_and_bytes(storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    a = _pdf(storage, g.id, poi.uuid, data=b"hello")
+    meta, data = storage.get_attachment(g.id, poi.uuid, a.id)
+    assert data == b"hello"
+    assert meta.filename == "ticket.pdf"
+    assert storage.get_attachment(g.id, poi.uuid, a.id + 1) is None
+
+
+def test_attachment_is_scoped_to_guide_and_point(storage):
+    g1 = storage.create_guide(name="A")
+    g2 = storage.create_guide(name="B")
+    p1 = storage.create_point(g1.id, POI(name="p1"))
+    p2 = storage.create_point(g2.id, POI(name="p2"))
+    a = _pdf(storage, g1.id, p1.uuid)
+
+    assert storage.get_attachment(g2.id, p1.uuid, a.id) is None
+    assert storage.get_attachment(g1.id, p2.uuid, a.id) is None
+    assert storage.delete_attachment(g2.id, p1.uuid, a.id) is False
+    assert storage.get_attachment(g1.id, p1.uuid, a.id) is not None
+    assert storage.get_point(g2.id, p2.uuid).attachments == []
+
+
+def test_add_attachment_to_missing_point_raises_keyerror(storage):
+    g = storage.create_guide(name="X")
+    with pytest.raises(KeyError):
+        storage.add_attachment(
+            g.id, "no-such", filename="x.pdf", content_type="", data=b""
+        )
+
+
+def test_delete_attachment(storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    a = _pdf(storage, g.id, poi.uuid)
+    assert storage.delete_attachment(g.id, poi.uuid, a.id) is True
+    assert storage.get_attachment(g.id, poi.uuid, a.id) is None
+    assert storage.get_point(g.id, poi.uuid).attachments == []
+    assert storage.delete_attachment(g.id, poi.uuid, a.id) is False
+
+
+def test_deleting_point_cascades_attachments(storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    _pdf(storage, g.id, poi.uuid)
+    storage.delete_point(g.id, poi.uuid)
+    with storage.connect() as conn:
+        n = conn.execute("SELECT COUNT(*) FROM attachments").fetchone()[0]
+    assert n == 0
+
+
+def test_deleting_guide_cascades_attachments(storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    _pdf(storage, g.id, poi.uuid)
+    storage.delete_guide(g.id)
+    with storage.connect() as conn:
+        n = conn.execute("SELECT COUNT(*) FROM attachments").fetchone()[0]
+    assert n == 0
+
+
+def test_update_point_result_carries_attachments(storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    a = _pdf(storage, g.id, poi.uuid)
+    updated = storage.update_point(
+        g.id,
+        poi.uuid,
+        expected_modified_at=poi.modified_at,
+        name="renamed",
+        description="",
+        latitude=None,
+        longitude=None,
+        link=None,
+        category="",
+        timestamp=None,
+    )
+    assert [x.id for x in updated.attachments] == [a.id]
+
+
+def test_attachments_do_not_bump_modified_at(storage):
+    # Attachments are outside the edit form, so adding or removing one
+    # must not make someone's open edit form go stale.
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    before = storage.get_point(g.id, poi.uuid).modified_at
+    a = _pdf(storage, g.id, poi.uuid)
+    assert storage.get_point(g.id, poi.uuid).modified_at == before
+    storage.delete_attachment(g.id, poi.uuid, a.id)
+    assert storage.get_point(g.id, poi.uuid).modified_at == before
+
+
+def test_schema_upgrade_from_v3_adds_attachments(tmp_path):
+    # Simulate a pre-attachments database: open once (v4), then roll the
+    # version marker back and drop the table, as a v3 file would look.
+    path = tmp_path / "old.db"
+    Storage(path)
+    import sqlite3
+
+    conn = sqlite3.connect(path)
+    conn.execute("DROP TABLE attachments")
+    conn.execute("UPDATE schema_version SET version = 3 WHERE rowid = 1")
+    conn.commit()
+    conn.close()
+
+    storage = Storage(path)
+    with storage.connect() as conn:
+        version = conn.execute("SELECT version FROM schema_version").fetchone()[0]
+        tables = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+    assert version == 4
+    assert "attachments" in tables
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    _pdf(storage, g.id, poi.uuid)
+    assert len(storage.get_point(g.id, poi.uuid).attachments) == 1

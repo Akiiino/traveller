@@ -6,7 +6,15 @@ these is urgent — the app is working and tested.
 
 ## Bugfixes
 
-- None yet.
+- **Legacy zip import races across gunicorn workers.** `create_app()` runs
+  once per worker, and each worker calls `maybe_import` on boot. With the
+  module's default of 2 workers, both see `guide.zip`, both import it, and
+  the second dies on `UNIQUE constraint failed: points.uuid` (POI uuids are
+  global). Gunicorn then refuses to start ("Worker failed to boot"), and
+  the loser's half-import leaves an empty duplicate guide behind. Seen
+  2026-09-30 while standing up a demo instance. Cheapest fix: claim the
+  zip by renaming it *before* importing (rename is atomic; the loser gets
+  `FileNotFoundError` and skips), or run gunicorn with `--preload`.
 
 ## High value, modest effort
 

@@ -172,7 +172,10 @@ body {
   background-color: rgba(217, 83, 79, 0.06);
 }
 
-.conflict-banner {
+/* .card-error reuses the same look for other card-level failures, e.g. an
+   oversized upload. */
+.conflict-banner,
+.card-error {
   background: #f8d7da;
   color: #842029;
   border: 1px solid #f5c2c7;
@@ -194,6 +197,48 @@ body {
   color: #842029;
   font-size: 12px;
   margin-top: 2px;
+}
+
+/* Attachments: one chip per file below the description. */
+.poi-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  /* Long filenames wrap inside the chip instead of widening the card. */
+  overflow-wrap: anywhere;
+}
+
+.attachment-size {
+  color: #6c757d;
+}
+
+.btn-attachment-delete {
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+/* Shown only while an upload is in flight: the file input's hx-indicator
+   points at the card, so htmx toggles .htmx-request on it. */
+.upload-indicator {
+  display: none;
+  color: #6c757d;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.htmx-request > .upload-indicator {
+  display: block;
 }
 
 .form-group label {

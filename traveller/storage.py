@@ -15,9 +15,9 @@ from pathlib import Path
 from typing import Iterator
 from uuid import uuid4
 
-from traveller.models import POI, Category, Guide
+from traveller.models import POI, Attachment, Category, Guide
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # The global set of POI types. Seeded into a brand-new database only.
 DEFAULT_CATEGORIES = [
@@ -67,6 +67,21 @@ CREATE TABLE IF NOT EXISTS points (
 );
 
 CREATE INDEX IF NOT EXISTS points_guide_idx ON points(guide_id);
+
+-- File attachments (tickets, screenshots, ...) live in the database as
+-- blobs rather than on disk: one file to back up, cascade delete for free,
+-- no orphan cleanup. Sizes are capped at upload time (see app.py).
+CREATE TABLE IF NOT EXISTS attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    point_uuid TEXT NOT NULL REFERENCES points(uuid) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    content_type TEXT NOT NULL DEFAULT '',
+    size INTEGER NOT NULL,
+    data BLOB NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS attachments_point_idx ON attachments(point_uuid);
 """
 
 
@@ -85,6 +100,33 @@ def _iso(dt: datetime | None) -> str | None:
 
 def _parse_dt(s: str | None) -> datetime | None:
     return datetime.fromisoformat(s) if s else None
+
+
+def _row_to_attachment(row: sqlite3.Row) -> Attachment:
+    return Attachment(
+        id=row["id"],
+        filename=row["filename"],
+        content_type=row["content_type"],
+        size=row["size"],
+        created_at=_parse_dt(row["created_at"]),
+    )
+
+
+def _load_attachments(
+    conn: sqlite3.Connection, where: str, params: tuple
+) -> dict[str, list[Attachment]]:
+    """Map point uuid -> attachment metadata (no blob) for the points
+    matching `where` (which may reference the `p` = points alias)."""
+    rows = conn.execute(
+        "SELECT a.id, a.point_uuid, a.filename, a.content_type, a.size, "
+        "a.created_at FROM attachments a JOIN points p ON p.uuid = a.point_uuid "
+        f"WHERE {where} ORDER BY a.id",
+        params,
+    ).fetchall()
+    out: dict[str, list[Attachment]] = {}
+    for r in rows:
+        out.setdefault(r["point_uuid"], []).append(_row_to_attachment(r))
+    return out
 
 
 def _row_to_poi(row: sqlite3.Row) -> POI:
@@ -169,6 +211,12 @@ class Storage:
                     )
                     conn.execute(
                         "UPDATE schema_version SET version = 3 WHERE rowid = 1"
+                    )
+                if version < 4:
+                    # The attachments table is created by the SCHEMA script
+                    # above (CREATE TABLE IF NOT EXISTS); nothing to rewrite.
+                    conn.execute(
+                        "UPDATE schema_version SET version = 4 WHERE rowid = 1"
                     )
 
     @contextmanager
@@ -319,7 +367,11 @@ class Storage:
                 "ORDER BY visited, timestamp IS NULL, timestamp",
                 (guide_id,),
             ).fetchall()
-        return [_row_to_poi(r) for r in rows]
+            attachments = _load_attachments(conn, "p.guide_id = ?", (guide_id,))
+        points = [_row_to_poi(r) for r in rows]
+        for poi in points:
+            poi.attachments = attachments.get(poi.uuid, [])
+        return points
 
     def get_point(self, guide_id: int, uuid: str) -> POI | None:
         with self.connect() as conn:
@@ -327,7 +379,13 @@ class Storage:
                 "SELECT * FROM points WHERE guide_id = ? AND uuid = ?",
                 (guide_id, uuid),
             ).fetchone()
-        return _row_to_poi(row) if row else None
+            if row is None:
+                return None
+            poi = _row_to_poi(row)
+            poi.attachments = _load_attachments(
+                conn, "p.guide_id = ? AND p.uuid = ?", (guide_id, uuid)
+            ).get(uuid, [])
+        return poi
 
     def create_point(self, guide_id: int, poi: POI | None = None) -> POI:
         if poi is None:
@@ -401,6 +459,9 @@ class Storage:
                     uuid,
                 ),
             )
+            attachments = _load_attachments(
+                conn, "p.guide_id = ? AND p.uuid = ?", (guide_id, uuid)
+            ).get(uuid, [])
         return POI(
             uuid=uuid,
             name=name,
@@ -412,6 +473,7 @@ class Storage:
             category=category,
             timestamp=timestamp,
             modified_at=new_modified_at,
+            attachments=attachments,
         )
 
     def set_visited(self, guide_id: int, uuid: str, visited: bool) -> None:
@@ -428,3 +490,69 @@ class Storage:
                 "DELETE FROM points WHERE guide_id = ? AND uuid = ?",
                 (guide_id, uuid),
             )
+
+    # --- Attachments ------------------------------------------------------
+    #
+    # Attachments deliberately do not touch the POI's modified_at: they are
+    # not part of the edit form, so a concurrent edit cannot clobber them and
+    # there is nothing for the conflict check to protect.
+
+    def add_attachment(
+        self,
+        guide_id: int,
+        uuid: str,
+        *,
+        filename: str,
+        content_type: str,
+        data: bytes,
+    ) -> Attachment:
+        """Attach a file to a POI. Raises KeyError(uuid) if the POI does not
+        exist in this guide."""
+        created_at = datetime.utcnow()
+        with self.connect() as conn:
+            exists = conn.execute(
+                "SELECT 1 FROM points WHERE guide_id = ? AND uuid = ?",
+                (guide_id, uuid),
+            ).fetchone()
+            if exists is None:
+                raise KeyError(uuid)
+            cur = conn.execute(
+                "INSERT INTO attachments "
+                "(point_uuid, filename, content_type, size, data, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (uuid, filename, content_type, len(data), data, _iso(created_at)),
+            )
+        return Attachment(
+            id=cur.lastrowid,
+            filename=filename,
+            content_type=content_type,
+            size=len(data),
+            created_at=created_at,
+        )
+
+    def get_attachment(
+        self, guide_id: int, uuid: str, attachment_id: int
+    ) -> tuple[Attachment, bytes] | None:
+        """Return (metadata, bytes) for one attachment, or None if it does not
+        belong to that POI in that guide."""
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT a.id, a.point_uuid, a.filename, a.content_type, a.size, "
+                "a.created_at, a.data "
+                "FROM attachments a JOIN points p ON p.uuid = a.point_uuid "
+                "WHERE p.guide_id = ? AND a.point_uuid = ? AND a.id = ?",
+                (guide_id, uuid, attachment_id),
+            ).fetchone()
+        if row is None:
+            return None
+        return _row_to_attachment(row), bytes(row["data"])
+
+    def delete_attachment(self, guide_id: int, uuid: str, attachment_id: int) -> bool:
+        """Delete one attachment. Returns False if there was nothing to delete."""
+        with self.connect() as conn:
+            cur = conn.execute(
+                "DELETE FROM attachments WHERE id = ? AND point_uuid = ? "
+                "AND point_uuid IN (SELECT uuid FROM points WHERE guide_id = ?)",
+                (attachment_id, uuid, guide_id),
+            )
+            return cur.rowcount > 0

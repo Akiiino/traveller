@@ -1,3 +1,5 @@
+from io import BytesIO
+
 from traveller.models import POI
 
 
@@ -340,15 +342,17 @@ def test_desktop_css_forces_map_container_visible(client):
     assert "display: flex !important" in map_block
 
 
-def test_main_js_swaps_on_409_and_400(client):
+def test_main_js_swaps_on_409_400_and_413(client):
     # htmx 1.x ignores 4xx by default, which silently drops the edit-form
     # response the server already builds for conflict (409) and per-field
-    # validation (400). main.js must opt both in to swap, otherwise the
-    # UI gives no feedback on a stale-edit or invalid save.
+    # validation (400), and the card-with-error the upload route builds
+    # for an oversized attachment (413). main.js must opt each in to
+    # swap, otherwise the UI gives no feedback.
     body = client.get("/static/js/main.js").get_data(as_text=True)
     assert "htmx:beforeSwap" in body
     assert "409" in body
     assert "400" in body
+    assert "413" in body
     assert "shouldSwap" in body
 
 
@@ -411,3 +415,191 @@ def test_toggle_visited(client, storage):
     assert storage.get_point(g.id, poi.uuid).visited is True
     client.put(f"/guide/{g.id}/point/{poi.uuid}/visited", data={})
     assert storage.get_point(g.id, poi.uuid).visited is False
+
+
+# --- Attachments ------------------------------------------------------------
+
+
+def _upload(
+    client,
+    guide_id,
+    uuid,
+    name="ticket.pdf",
+    data=b"%PDF-1.4 fake",
+    content_type="application/pdf",
+):
+    return client.post(
+        f"/guide/{guide_id}/point/{uuid}/attachments",
+        data={"file": (BytesIO(data), name, content_type)},
+        content_type="multipart/form-data",
+    )
+
+
+def test_upload_attachment_renders_card_with_chip(client, storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    r = _upload(client, g.id, poi.uuid)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    [a] = storage.get_point(g.id, poi.uuid).attachments
+    assert a.filename == "ticket.pdf"
+    assert a.content_type == "application/pdf"
+    assert a.size == len(b"%PDF-1.4 fake")
+    assert "ticket.pdf" in body
+    assert f"/guide/{g.id}/point/{poi.uuid}/attachment/{a.id}" in body
+    assert 'class="card-error"' not in body
+
+
+def test_upload_strips_directory_from_filename(client, storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    r = _upload(client, g.id, poi.uuid, name="..\\dir/sub/ticket.pdf")
+    assert r.status_code == 200
+    [a] = storage.get_point(g.id, poi.uuid).attachments
+    assert a.filename == "ticket.pdf"
+
+
+def test_upload_without_file_returns_400(client, storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    r = client.post(
+        f"/guide/{g.id}/point/{poi.uuid}/attachments",
+        data={},
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 400
+    assert storage.get_point(g.id, poi.uuid).attachments == []
+
+
+def test_upload_to_missing_point_returns_404(client, storage):
+    g = storage.create_guide(name="X")
+    r = _upload(client, g.id, "no-such")
+    assert r.status_code == 404
+
+
+def test_upload_oversized_attachment_returns_413_with_error(client, app, storage):
+    app.config["MAX_CONTENT_LENGTH"] = 1024
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    r = _upload(client, g.id, poi.uuid, data=b"x" * 2048)
+    assert r.status_code == 413
+    body = r.get_data(as_text=True)
+    # The card itself comes back (so htmx can swap it in) with a banner.
+    assert f"card-poi-{poi.uuid}" in body
+    assert 'class="card-error"' in body
+    assert "too large" in body
+    assert storage.get_point(g.id, poi.uuid).attachments == []
+
+
+def test_download_pdf_is_inline_with_nosniff(client, storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    a = storage.add_attachment(
+        g.id,
+        poi.uuid,
+        filename="ticket.pdf",
+        content_type="application/pdf",
+        data=b"%PDF-1.4 fake",
+    )
+    r = client.get(f"/guide/{g.id}/point/{poi.uuid}/attachment/{a.id}")
+    assert r.status_code == 200
+    assert r.data == b"%PDF-1.4 fake"
+    assert r.mimetype == "application/pdf"
+    disposition = r.headers["Content-Disposition"]
+    assert disposition.startswith("inline")
+    assert "ticket.pdf" in disposition
+    assert r.headers["X-Content-Type-Options"] == "nosniff"
+
+
+def test_download_html_is_forced_to_attachment(client, storage):
+    # An uploaded HTML (or SVG, ...) file must never render in the app's
+    # origin, or it becomes stored XSS. Anything outside the inline
+    # allowlist is served as a download.
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    a = storage.add_attachment(
+        g.id,
+        poi.uuid,
+        filename="evil.html",
+        content_type="text/html",
+        data=b"<script>window.__pwn = true</script>",
+    )
+    r = client.get(f"/guide/{g.id}/point/{poi.uuid}/attachment/{a.id}")
+    assert r.status_code == 200
+    assert r.headers["Content-Disposition"].startswith("attachment")
+    assert r.headers["X-Content-Type-Options"] == "nosniff"
+
+
+def test_download_non_ascii_filename(client, storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    a = storage.add_attachment(
+        g.id,
+        poi.uuid,
+        filename="티켓.pdf",
+        content_type="application/pdf",
+        data=b"%PDF",
+    )
+    r = client.get(f"/guide/{g.id}/point/{poi.uuid}/attachment/{a.id}")
+    assert r.status_code == 200
+    assert "filename*=UTF-8''" in r.headers["Content-Disposition"]
+
+
+def test_download_404s_for_wrong_guide_or_point(client, storage):
+    g1 = storage.create_guide(name="A")
+    g2 = storage.create_guide(name="B")
+    p1 = storage.create_point(g1.id, POI(name="p1"))
+    p2 = storage.create_point(g2.id, POI(name="p2"))
+    a = storage.add_attachment(
+        g1.id, p1.uuid, filename="t.pdf", content_type="application/pdf", data=b"x"
+    )
+    assert (
+        client.get(f"/guide/{g2.id}/point/{p1.uuid}/attachment/{a.id}").status_code
+        == 404
+    )
+    assert (
+        client.get(f"/guide/{g1.id}/point/{p2.uuid}/attachment/{a.id}").status_code
+        == 404
+    )
+    assert (
+        client.get(f"/guide/{g1.id}/point/{p1.uuid}/attachment/{a.id + 1}").status_code
+        == 404
+    )
+
+
+def test_delete_attachment_renders_card_without_chip(client, storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    a = storage.add_attachment(
+        g.id, poi.uuid, filename="t.pdf", content_type="application/pdf", data=b"x"
+    )
+    url = f"/guide/{g.id}/point/{poi.uuid}/attachment/{a.id}"
+    r = client.delete(url)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert f"card-poi-{poi.uuid}" in body
+    assert "t.pdf" not in body
+    assert storage.get_point(g.id, poi.uuid).attachments == []
+    # Deleting again (e.g. after someone else already did) is a no-op
+    # that still hands back the fresh card.
+    assert client.delete(url).status_code == 200
+
+
+def test_delete_attachment_404s_for_missing_point(client, storage):
+    g = storage.create_guide(name="X")
+    assert client.delete(f"/guide/{g.id}/point/no-such/attachment/1").status_code == 404
+
+
+def test_guide_page_lists_attachments(client, storage):
+    g = storage.create_guide(name="X")
+    poi = storage.create_point(g.id, POI(name="p"))
+    storage.add_attachment(
+        g.id,
+        poi.uuid,
+        filename="ticket.pdf",
+        content_type="application/pdf",
+        data=b"x",
+    )
+    body = client.get(f"/guide/{g.id}").get_data(as_text=True)
+    assert "ticket.pdf" in body
+    assert 'input type="file"' in body

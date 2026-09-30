@@ -22,6 +22,18 @@ class Category:
 
 
 @dataclass
+class Attachment:
+    """Metadata for a file attached to a POI. The bytes themselves stay in
+    storage and are only loaded when the file is downloaded."""
+
+    id: int
+    filename: str
+    content_type: str
+    size: int
+    created_at: datetime
+
+
+@dataclass
 class POI:
     uuid: str = field(default_factory=lambda: str(uuid4()))
     name: str = ""
@@ -33,6 +45,7 @@ class POI:
     category: str = ""
     timestamp: datetime | None = None
     modified_at: datetime = field(default_factory=datetime.utcnow)
+    attachments: list[Attachment] = field(default_factory=list)
 
     @property
     def has_coords(self) -> bool:

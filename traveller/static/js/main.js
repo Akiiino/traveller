@@ -1,11 +1,12 @@
 document.addEventListener("DOMContentLoaded", function () {
   // htmx 1.x ignores 4xx responses by default. Both the conflict path (409)
   // and the per-field validation path (400) return a rendered edit form
-  // populated with the user's typed values — we want it swapped in just
-  // like a 200 would be.
+  // populated with the user's typed values, and an oversized attachment
+  // upload (413) returns the card with an error banner — we want each
+  // swapped in just like a 200 would be.
   document.body.addEventListener("htmx:beforeSwap", function (event) {
     const status = event.detail.xhr.status;
-    if (status === 409 || status === 400) {
+    if (status === 409 || status === 400 || status === 413) {
       event.detail.shouldSwap = true;
       event.detail.isError = false;
     }

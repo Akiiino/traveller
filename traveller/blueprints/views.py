@@ -1,4 +1,6 @@
+import mimetypes
 from datetime import datetime
+from io import BytesIO
 from urllib.parse import urlparse
 
 from flask import (
@@ -9,8 +11,10 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_file,
     url_for,
 )
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from traveller.models import POI
 from traveller.storage import ConflictError, Storage
@@ -65,12 +69,13 @@ def _category_colors() -> dict[str, str]:
     return {c.name: c.color for c in _storage().list_categories()}
 
 
-def _render_point(poi: POI, guide_id: int) -> str:
+def _render_point(poi: POI, guide_id: int, *, error: str | None = None) -> str:
     return render_template(
         "card.j2.html",
         point=poi,
         guide_id=guide_id,
         category_colors=_category_colors(),
+        error=error,
     )
 
 
@@ -362,3 +367,92 @@ def toggle_visited(guide_id: int, uuid: str):
     visited = request.form.get("visited") == "on"
     _storage().set_visited(guide_id, uuid, visited)
     return Response(status=200)
+
+
+# --- Attachment routes --------------------------------------------------------
+
+# Only these types open in the browser tab when clicked; everything else is
+# forced to download. An uploaded .html or .svg must never render inside
+# the app's origin.
+INLINE_CONTENT_TYPES = {
+    "application/pdf",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+}
+
+
+def _attachment_filename(raw: str | None) -> str:
+    """Keep only the basename of whatever the browser sent."""
+    name = (raw or "").replace("\\", "/").rsplit("/", 1)[-1].strip()
+    return name or "attachment"
+
+
+def _point_card_or_404(guide_id: int, uuid: str) -> Response:
+    poi = _storage().get_point(guide_id, uuid)
+    if poi is None:
+        abort(404)
+    return Response(_render_point(poi, guide_id))
+
+
+@views_bp.route("/guide/<int:guide_id>/point/<uuid>/attachments", methods=["POST"])
+def upload_attachment(guide_id: int, uuid: str):
+    storage = _storage()
+    try:
+        file = request.files.get("file")
+    except RequestEntityTooLarge:
+        # Re-render the card with a banner rather than Flask's bare 413
+        # page; main.js opts 413 into a normal swap.
+        poi = storage.get_point(guide_id, uuid)
+        if poi is None:
+            abort(404)
+        limit_mb = current_app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024)
+        body = _render_point(
+            poi, guide_id, error=f"File is too large (max {limit_mb} MB)."
+        )
+        return Response(body, status=413)
+    if file is None or not file.filename:
+        abort(400, "no file uploaded")
+    filename = _attachment_filename(file.filename)
+    content_type = (
+        file.mimetype or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    )
+    try:
+        storage.add_attachment(
+            guide_id,
+            uuid,
+            filename=filename,
+            content_type=content_type,
+            data=file.read(),
+        )
+    except KeyError:
+        abort(404)
+    return _point_card_or_404(guide_id, uuid)
+
+
+@views_bp.route(
+    "/guide/<int:guide_id>/point/<uuid>/attachment/<int:attachment_id>",
+    methods=["GET", "DELETE"],
+)
+def attachment(guide_id: int, uuid: str, attachment_id: int):
+    storage = _storage()
+
+    if request.method == "DELETE":
+        # Idempotent: if someone else already removed it, still hand back the
+        # fresh card so the stale chip disappears.
+        storage.delete_attachment(guide_id, uuid, attachment_id)
+        return _point_card_or_404(guide_id, uuid)
+
+    found = storage.get_attachment(guide_id, uuid, attachment_id)
+    if found is None:
+        abort(404)
+    meta, data = found
+    resp = send_file(
+        BytesIO(data),
+        mimetype=meta.content_type,
+        as_attachment=meta.content_type not in INLINE_CONTENT_TYPES,
+        download_name=meta.filename,
+    )
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp

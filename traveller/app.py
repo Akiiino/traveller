@@ -15,6 +15,9 @@ LEGACY_ZIP_PATH = STATE_DIR / "guide.zip"
 def create_app() -> Flask:
     app = Flask(__name__)
     app.jinja_env.undefined = StrictUndefined
+    # Cap on POI attachment uploads. Past this, werkzeug raises
+    # RequestEntityTooLarge and the upload view renders a card-level error.
+    app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
 
     storage = Storage(DB_PATH)
     # One-shot import of any legacy zip on first boot.
